@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  #%L
+  PortfolioEffect - Quant Client
+  %%
+  Copyright (C) 2011 - 2015 Snowfall Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>
+  #L%
+  -->
+
+
+<templates>
+	<!--
+		################################################################
+		SESSION ADMINISTATION TEMPLATES
+		################################################################
+	-->
+	<!-- Logon message -->
+	<template name="Logon" id="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"><constant value="9"/> </string>
+		<string name="MessageType" id="35"><constant value="A"/></string>
+	    <int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<int32 name="EncryptMethod" id="98"/>
+		<int32 name="HeartBtInt" id="108"/>
+		<string name="Username" id="553" presence="optional"/>
+		<int32 name="EncryptedPasswordMethod" id="1400" presence="optional"/>
+		<int32 name="EncryptedPasswordLen" id="1401" presence="optional"/>
+		<string name="EncryptedPassword" id="1402" presence="optional"/>
+		<int32 name="SessionStatus" id="1409" presence="optional"/>
+	</template>
+	
+	<!-- Logout message -->
+	<template name="Logout" id="2" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"><constant value="9"/> </string>
+		<string name="MessageType" id="35"><constant value="5"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<int32 name="SessionStatus" id="1409" presence="optional"/>
+		<string name="Text" id="58" presence="optional"/>
+	</template>
+
+	<!-- Heartbeat message -->
+	<template name="Heartbeat" id="3" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"><constant value="9"/> </string>
+		<string name="MessageType" id="35"><constant value="0"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="TestReqID" id="112" presence="optional"></string>
+	</template>
+
+	<!-- TestRequest message -->
+	<template name="TestRequest" id="4" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"><constant value="9"/> </string>
+		<string name="MessageType" id="35"><constant value="1"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="TestReqID" id="112" presence="optional"></string>
+	</template>
+
+
+	<!-- Reject message -->
+	<template name="Reject" id="5" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"><constant value="9"/> </string>
+		<string name="MessageType" id="35"><constant value="3"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<int32 name="RefSeqNum" id="45"></int32>
+		<int32 name="RefTagID" id="371" presence="optional"></int32>
+		<string name="RefMsgType" id="372" presence="optional"></string>
+		<string name="RefApplVerID" id="1130" presence="optional"></string>
+		<int32 name="RefApplExtID" id="1406" presence="optional"></int32>
+		<string name="RefCstmApplVerID" id="1131" presence="optional"></string>
+		<int32 name="SessionRejectReason" id="373" presence="optional"></int32>
+		<string name="Text" id="58" presence="optional"></string>
+	</template>
+	
+	<!--
+		################################################################
+		REMOTE  MESSAGE
+		################################################################
+	-->	
+	
+	
+	
+	<template name="RemoteRequest" id="17" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U12"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="RequestType" id="777001"/>
+		
+		<string name="Request" id="777002" presence="optional" />
+	   	
+	   	<int32 name="DataChunkSize" id="777003" presence="optional" />
+	   	<int32 name="NumberChunks" id="777004" presence="optional" />
+	   	<!--  data is 2d array [NumberChunks][DataChunkSize]  packed by column   -->
+		<sequence name="Data" presence="optional" >
+			<int32 name="price" id="777005"   >   <delta/> </int32>
+			<int32 name="time" id="777006"   >   <delta/> </int32>
+			<int32 name="quantity" id="777007"   >   <delta/> </int32>
+
+		</sequence>
+		
+	</template>
+	
+	
+	<template name="RemoteResponse" id="18" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U13"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="ResponseType" id="777008"/>
+		<string name="Response" id="777009" presence="optional" />
+	   	<int32 name="DataChunkSize" id="777010" presence="optional" />
+	   	<int32 name="NumberChunks" id="777011" presence="optional" />
+	   	
+	   	<!--  data is 2d array [NumberChunks][DataChunkSize]  packed by column   -->
+		<sequence name="Data" presence="optional" >
+			<decimal name="data" id="777012"   >   <delta/> </decimal>			
+		</sequence>
+		
+	</template>
+	
+	
+	<template name="TrafficStatisticsRequest" id="19" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U14"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+	</template>
+	
+	
+	<template name="TrafficStatisticsResponse" id="20" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U15"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<int64 name="RemainigTrafficObs" id="777013"  />
+	   		   		
+	</template>
+	
+
+	<template name="FunctionComputeRequest" id="21" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U16"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002" />
+	   		   	
+		<sequence name="Data"  >
+			<int32 name="price" id="777005"   >   <delta/> </int32>
+			<int32 name="time" id="777006"   >   <delta/> </int32>
+		</sequence>
+		
+	</template>
+	
+	
+	<template name="FunctionComputeResponse" id="22" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U17"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="ResponseType" id="777008"/>
+		<string name="Response" id="777009"  presence="optional" />
+		<sequence name="Data"  >
+			<decimal name="data" id="777012"   >   <delta/> </decimal>			
+		</sequence>
+		
+	</template>
+	
+
+	<template name="IndicatorValidationRequest" id="23" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U18"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+				
+		<string name="Request" id="777002"  />
+	   	
+	   			
+	</template>
+	
+	
+	<template name="IndicatorValidationResponse" id="24" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U19"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="ResponseType" id="777008"/>
+		<string name="Response" id="777009"  />
+	   	
+	</template>
+	
+	<template name="PortfolioComputeRequest" id="25" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U20"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002"  />
+	   	
+	   	<int32 name="DataChunkSize" id="777003" presence="optional" />
+	   	<int32 name="NumberChunks" id="777004" presence="optional" />
+	   	<!--  data is 2d array [NumberChunks][DataChunkSize]  packed by column   -->
+		<sequence name="Data" presence="optional" >
+			<int32 name="price" id="777005"   >   <delta/> </int32>
+			<int32 name="time" id="777006"   >   <delta/> </int32>
+			<int32 name="quantity" id="777007"   >   <delta/> </int32>
+
+		</sequence>
+		
+	</template>
+	
+	
+	<template name="PortfolioComputeResponse" id="26" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U21"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="ResponseType" id="777008"/>
+		<string name="Response" id="777009" presence="optional" />
+	   	
+	   	<int32 name="DataChunkSize" id="777010" presence="optional" />
+	   	<int32 name="NumberChunks" id="777011" presence="optional" />
+	   	
+	   	<!--  data is 2d array [NumberChunks][DataChunkSize]  packed by column   -->
+		<sequence name="Data" presence="optional" >
+			<decimal name="data" id="777012"   >   <delta/> </decimal>			
+		</sequence>
+		
+	</template>
+	
+<template name="PortfolioOptimizationRequest" id="27" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U22"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002"  />
+	   	
+	   	<int32 name="DataChunkSize" id="777003" presence="optional" />
+	   	<int32 name="NumberChunks" id="777004" presence="optional" />
+	   	<!--  data is 2d array [NumberChunks][DataChunkSize]  packed by column   -->
+		<sequence name="Data" presence="optional" >
+			<int32 name="price" id="777005"   >   <delta/> </int32>
+			<int32 name="time" id="777006"   >   <delta/> </int32>
+			<int32 name="quantity" id="777007"   >   <delta/> </int32>
+
+		</sequence>
+		
+	</template>
+	
+	
+	<template name="PortfolioOptimizationResponse" id="28" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U23"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="ResponseType" id="777008"/>
+		<string name="Response" id="777009" presence="optional" />
+	   	
+	   	<int32 name="DataChunkSize" id="777010" presence="optional" />
+	   	<int32 name="NumberChunks" id="777011" presence="optional" />
+	   	
+	   	<!--  data is 2d array [NumberChunks][DataChunkSize]  packed by column   -->
+		<sequence name="Data" presence="optional" >
+			<decimal name="data" id="777012"   >   <delta/> </decimal>			
+		</sequence>
+		
+	</template>
+	
+	
+	<template name="LoadDataRequest" id="29" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U24"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002" />
+	   		   	
+		<sequence name="Data"  >
+			<decimal name="data" id="777012"   >   <delta/> </decimal>			
+		</sequence>		
+	</template>
+	
+	<template name="LoadDataResponse" id="29" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U25"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+				
+		<string name="ResponseType" id="777008"/>
+		<string name="Response" id="777009" presence="optional" />
+	   					
+	</template>
+	
+	<template name="TransmitDataRequest" id="30" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U26"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002" presence="optional" />
+	   	
+	   	<int32 name="OriginalLength" id="777020"></int32>
+		<byteVector name="DataInt" id="777025"  presence="optional" />
+		<byteVector name="DataFloat" id="777025"  presence="optional" />
+		<byteVector name="Time" id="777026" presence="optional"  />		
+	</template>
+	
+	<template name="TransmitDataResponse" id="31" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U27"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="ResponseType" id="777001"/>
+		<string name="Response" id="777002" presence="optional" />	   		   			
+	</template>
+	
+
+	<template name="TransactionalPortfolioComputeRequest" id="32" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U28"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002"  />
+		<string name="Params" id="777030" presence="optional" />   	
+	   			
+	</template>
+	
+	
+	
+	
+
+</templates>

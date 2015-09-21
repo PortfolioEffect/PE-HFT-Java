@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  #%L
+  Ice-9 Platform Java API
+  %%
+  Copyright (C) 2010 - 2014 Snowfall Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>
+  #L%
+  -->
+
+<templates>
+	
+	<template name="RemoteRequest" id="17" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="ApplVerID" id="1128"> <constant value="9"/> </string>
+	    <string name="MessageType" id="35"><constant value="U12"/></string>
+		<int32 name="MsgSeqNum" id="34"> <increment/> </int32>
+		<int64 name="SendingTime" id="52"/>
+		
+		<!-- Message Body -->
+		<string name="RequestType" id="777001"/>
+		<string name="Request" id="777002" presence="optional" />
+	   	
+	   	<int32 name="OriginalLength" id="777020"></int32>
+		<byteVector name="Price" id="777005"></byteVector>
+		<byteVector name="Time" id="777006"></byteVector>
+		<byteVector name="Result" id="777007"></byteVector>
+	</template>
+	
+</templates>
