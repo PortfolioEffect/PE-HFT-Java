@@ -74,6 +74,11 @@ public class StrategyOptimizer extends PortfolioOptimizer {
 		return forecasterType;
 	}
 
+	/**
+	 * 
+	 * "simple"
+	 * "exp_smoothing"
+	 */
 	public void setForecasterType(String forecasterType) {
 		this.forecasterType = forecasterType;
 	}

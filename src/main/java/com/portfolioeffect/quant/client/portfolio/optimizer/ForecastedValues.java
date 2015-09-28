@@ -21,7 +21,7 @@ import com.portfolioeffect.quant.client.util.Console;
 import com.portfolioeffect.quant.client.util.MessageStrings;
 import com.portfolioeffect.quant.client.util.MetricStringBuilder;
 
-public class ForecastedValues{
+public class ForecastedValues {
 
 	private boolean[][] isSymbolCumulantPresent;
 	private boolean[] isIndexCumulantPresent = { false, false, false, false };
@@ -35,14 +35,14 @@ public class ForecastedValues{
 	private ArrayCache[] forecastedIndexValueTime;
 
 	private boolean[][] isCumulants;
-	private boolean[] isCumulantsIndex = new boolean[2];
+	private boolean[] isCumulantsIndex ={false, false};
 
 	private boolean isTimeStep;
 	private ArrayCache timeStep;
 	private ArrayCache timeStepTimeMilliSec;
 	private int N = 1;
 
-	public ForecastedValues(Portfolio portfolio){
+	public ForecastedValues(Portfolio portfolio) {
 
 		symbolsName = new ArrayList<String>(portfolio.getSymbolNamesList());
 
@@ -63,7 +63,8 @@ public class ForecastedValues{
 			forecastedSymbolValueTime[i] = new ArrayCache[5];
 
 			isCumulants[i] = new boolean[2];
-
+			isCumulants[i][0] = false;
+			isCumulants[i][1] = false;
 			isSymbolCumulantPresent[i] = new boolean[5];
 			isSymbolCumulantPresent[i][0] = false;
 			isSymbolCumulantPresent[i][1] = false;
@@ -79,12 +80,12 @@ public class ForecastedValues{
 	public MethodResult isAllForecastedValuesPresent() {
 
 		String symbols = "";
-
-		for (int i = 0; i < 4; i++) {
-			if (!isIndexCumulantPresent[i]) {
-				symbols += "Index-forecasted cumulant" + (i + 1) + ";\n";
-			}
-		}
+		//
+		// for (int i = 0; i < 4; i++) {
+		// if (!isIndexCumulantPresent[i]) {
+		// symbols += "Index-forecasted cumulant" + (i + 1) + ";\n";
+		// }
+		// }
 
 		if (!isTimeStep) {
 
@@ -92,19 +93,19 @@ public class ForecastedValues{
 
 		}
 
-		for (int i = 0; i < symbolNamber; i++) {
-			for (int j = 0; j < 4; j++) {
-				if (!isSymbolCumulantPresent[i][j]) {
-					symbols += symbolsName.get(i) + "-forecasted cumulant"
-							+ (j + 1) + ";\n";
-				}
-			}
-
-			if (!isSymbolCumulantPresent[i][4]) {
-				symbols += symbolsName.get(i) + "-forecasted beta;\n";
-			}
-
-		}
+		// for (int i = 0; i < symbolNamber; i++) {
+		// for (int j = 0; j < 4; j++) {
+		// if (!isSymbolCumulantPresent[i][j]) {
+		// symbols += symbolsName.get(i) + "-forecasted cumulant"
+		// + (j + 1) + ";\n";
+		// }
+		// }
+		//
+		// if (!isSymbolCumulantPresent[i][4]) {
+		// symbols += symbolsName.get(i) + "-forecasted beta;\n";
+		// }
+		//
+		// }
 
 		if (symbols.equals(""))
 			return new MethodResult();
@@ -118,11 +119,10 @@ public class ForecastedValues{
 
 	public MethodResult setForecastTimeStep(String value) {
 		try {
-			
-			N = parseTimeInterval(value,"forecast time step");
-			
-			return setForecastTimeStep(
-					new double[] { N }, new long[] { -1 });
+
+			N = parseTimeInterval(value, "forecast time step");
+
+			return setForecastTimeStep(new double[] { N }, new long[] { -1 });
 		} catch (Exception e) {
 			return new MethodResult(e.getMessage());
 		}
@@ -132,9 +132,8 @@ public class ForecastedValues{
 
 		try {
 			timeStep = new ArrayCache(value);
-			
+
 			timeStepTimeMilliSec = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -148,8 +147,7 @@ public class ForecastedValues{
 		return new MethodResult();
 	}
 
-	public MethodResult setSymbolForecastedExpReturn(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedExpReturn(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
 			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
@@ -158,9 +156,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedSymbolValue[index][0] = new ArrayCache(value);
-			
+
 			forecastedSymbolValueTime[index][0] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -174,8 +171,7 @@ public class ForecastedValues{
 		return new MethodResult();
 	}
 
-	public MethodResult setSymbolForecastedBeta(String symbol, double[] value,
-			long[] time) {
+	public MethodResult setSymbolForecastedBeta(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
 			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
@@ -185,7 +181,6 @@ public class ForecastedValues{
 		try {
 			forecastedSymbolValue[index][4] = new ArrayCache(value);
 			forecastedSymbolValueTime[index][4] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -199,8 +194,7 @@ public class ForecastedValues{
 		return new MethodResult();
 	}
 
-	public MethodResult setSymbolForecastedVariance(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedVariance(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
 			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
@@ -209,9 +203,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedSymbolValue[index][1] = new ArrayCache(value);
-			
+
 			forecastedSymbolValueTime[index][1] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -225,8 +218,7 @@ public class ForecastedValues{
 		return new MethodResult();
 	}
 
-	public MethodResult setSymbolForecastedSkewness(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedSkewness(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
 			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
@@ -235,9 +227,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedSymbolValue[index][2] = new ArrayCache(value);
-			
+
 			forecastedSymbolValueTime[index][2] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -248,13 +239,10 @@ public class ForecastedValues{
 
 		isSymbolCumulantPresent[index][2] = true;
 
-		isCumulants[index][0] = false;
-
 		return new MethodResult();
 	}
 
-	public MethodResult setSymbolForecastedKurtosis(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedKurtosis(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
 			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
@@ -263,9 +251,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedSymbolValue[index][3] = new ArrayCache(value);
-			
+
 			forecastedSymbolValueTime[index][3] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -276,27 +263,24 @@ public class ForecastedValues{
 
 		isSymbolCumulantPresent[index][3] = true;
 
-		isCumulants[index][0] = false;
+		
 
 		return new MethodResult();
 	}
 
-	public MethodResult setSymbolForecastedCumulant1(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedCumulant1(String symbol, double[] value, long[] time) {
 
 		return setSymbolForecastedExpReturn(symbol, value, time);
 
 	}
 
-	public MethodResult setSymbolForecastedCumulant2(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedCumulant2(String symbol, double[] value, long[] time) {
 
 		return setSymbolForecastedVariance(symbol, value, time);
 
 	}
 
-	public MethodResult setSymbolForecastedCumulant3(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedCumulant3(String symbol, double[] value, long[] time) {
 
 		MethodResult result = setSymbolForecastedSkewness(symbol, value, time);
 		isCumulants[symbolsName.indexOf(symbol)][0] = true;
@@ -304,8 +288,7 @@ public class ForecastedValues{
 
 	}
 
-	public MethodResult setSymbolForecastedCumulant4(String symbol,
-			double[] value, long[] time) {
+	public MethodResult setSymbolForecastedCumulant4(String symbol, double[] value, long[] time) {
 
 		MethodResult result = setSymbolForecastedKurtosis(symbol, value, time);
 		isCumulants[symbolsName.indexOf(symbol)][1] = true;
@@ -316,9 +299,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedIndexValue[1] = new ArrayCache(value);
-			
+
 			forecastedIndexValueTime[1] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -336,9 +318,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedIndexValue[2] = new ArrayCache(value);
-			
+
 			forecastedIndexValueTime[2] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -349,7 +330,7 @@ public class ForecastedValues{
 
 		isIndexCumulantPresent[2] = true;
 
-		isCumulantsIndex[0] = false;
+		
 
 		return new MethodResult();
 	}
@@ -358,9 +339,8 @@ public class ForecastedValues{
 
 		try {
 			forecastedIndexValue[3] = new ArrayCache(value);
-			
+
 			forecastedIndexValueTime[3] = new ArrayCache(time);
-			
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
@@ -371,12 +351,11 @@ public class ForecastedValues{
 
 		isIndexCumulantPresent[3] = true;
 
-		isCumulantsIndex[0] = false;
+		
 
 		return new MethodResult();
 	}
 
-	
 	public MethodResult setIndexForecastedCumulant2(double[] value, long[] time) {
 
 		return setIndexForecastedVariance(value, time);
@@ -396,201 +375,8 @@ public class ForecastedValues{
 		return result;
 	}
 
-	public MethodResult makeSimpleCumulantsForecastT(Portfolio portfolio) {
 
-		for(String e:portfolio.getSymbolNamesList()){
-			portfolio.setPositionQuantity(e, 1);
-		} 
-		portfolio.setPortfolioMetricsMode("price");
-		
-		portfolio.startBatch();
-		MetricStringBuilder metricStringbuilder = new MetricStringBuilder();
-		try {
-			MethodResult result;
-			for (String symbol : symbolsName) {
- 
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_BETA").setPosition(symbol).getJSON());
-
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_EXPECTED_RETURN").setPosition(symbol).getJSON());
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_VARIANCE").setPosition(symbol).getJSON());
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_CUMULANT3").setPosition(symbol).getJSON());
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_CUMULANT4").setPosition(symbol).getJSON());
-
-			}
-
-			//portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_EXPECTED_RETURN").getJSON());
-			portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_VARIANCE").getJSON());
-			portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_CUMULANT3").getJSON());
-			portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_CUMULANT4").getJSON());
-
-			portfolio.finishBatch();
-
-			for (String symbol : symbolsName) {
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_BETA").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedBeta(symbol, result.getDoubleArray("value"),
-						result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_EXPECTED_RETURN").setPosition(symbol).getJSON()));
-								
-				checkResult(setSymbolForecastedCumulant1(symbol,
-						result.getDoubleArray("value"), result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_VARIANCE").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant2(symbol,
-						result.getDoubleArray("value"), result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_CUMULANT3").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant3(symbol,
-						result.getDoubleArray("value"), result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_CUMULANT4").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant4(symbol,
-						result.getDoubleArray("value"), result.getLongArray("time")));
-
-			}
-
-
-			result = checkResult(portfolio.getMetric(metricStringbuilder.setMetric("INDEX_VARIANCE").getJSON()));
-			checkResult(setIndexForecastedCumulant2(result.getDoubleArray("value"),
-					result.getLongArray("time")));
-
-			result = checkResult(portfolio.getMetric(metricStringbuilder.setMetric("INDEX_CUMULANT3").getJSON()));
-			checkResult(setIndexForecastedCumulant3(result.getDoubleArray("value"),
-					result.getLongArray("time")));
-
-			result = checkResult(portfolio.getMetric(metricStringbuilder.setMetric("INDEX_CUMULANT4").getJSON()));
-			checkResult(setIndexForecastedCumulant4(result.getDoubleArray("value"),
-					result.getLongArray("time")));
-
-		} catch (Exception e) {
-			if(portfolio.isDebug())
-				Console.writeStackTrace(e);
-			return new MethodResult(e.getMessage());
-		}
-
-		return new MethodResult();
-	}
-	
-	/**
-	 * 
-	 * @param portfolio
-	 * @param type "simple"|| "exp_smoothing"
-	 * @return
-	 */
-	public MethodResult makeSimpleCumulantsForecast(Portfolio portfolio, String type) {
-
-		if(type.equals("simple"))
-			N=1;
-		if(!(type.equals("simple")||type.equals("exp_smoothing")))
-			return new MethodResult("Wrong type: " + type);
-		
-		for(String e:portfolio.getSymbolNamesList()){
-			portfolio.setPositionQuantity(e, 1);
-		} 
-		portfolio.setPortfolioMetricsMode("price");
-		portfolio.setSamplingInterval("1s");
-		
-		portfolio.startBatch();
-		MetricStringBuilder metricStringbuilder = new MetricStringBuilder();
-		try {
-			MethodResult result;
-			for (String symbol : symbolsName) {
- 
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_BETA").setPosition(symbol).getJSON());
-
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_EXPECTED_RETURN").setPosition(symbol).getJSON());
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_VARIANCE").setPosition(symbol).getJSON());
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_CUMULANT3").setPosition(symbol).getJSON());
-				portfolio.addMetricToBatch(metricStringbuilder.setMetric("POSITION_CUMULANT4").setPosition(symbol).getJSON());
-
-			}
-
-			//portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_EXPECTED_RETURN").getJSON());
-			portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_VARIANCE").getJSON());
-			portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_CUMULANT3").getJSON());
-			portfolio.addMetricToBatch(metricStringbuilder.setMetric("INDEX_CUMULANT4").getJSON());
-
-			portfolio.finishBatch();
-
-			for (String symbol : symbolsName) {
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_BETA").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedBeta(symbol, forecasterExp( result.getDoubleArray("value"), N),
-						result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_EXPECTED_RETURN").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant1(symbol,
-						forecasterExp(result.getDoubleArray("value"), N), result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_VARIANCE").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant2(symbol,
-						forecasterExp(result.getDoubleArray("value"), N), result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_CUMULANT3").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant3(symbol,
-						forecasterExp(result.getDoubleArray("value"), N), result.getLongArray("time")));
-
-				result = checkResult(portfolio
-						.getMetric(metricStringbuilder.setMetric("POSITION_CUMULANT4").setPosition(symbol).getJSON()));
-				checkResult(setSymbolForecastedCumulant4(symbol,
-						forecasterExp(result.getDoubleArray("value"), N), result.getLongArray("time")));
-
-			}
-
-
-			result = checkResult(portfolio.getMetric(metricStringbuilder.setMetric("INDEX_VARIANCE").getJSON()));
-			checkResult(setIndexForecastedCumulant2(forecasterExp(result.getDoubleArray("value"), N),
-					result.getLongArray("time")));
-
-			result = checkResult(portfolio.getMetric(metricStringbuilder.setMetric("INDEX_CUMULANT3").getJSON()));
-			checkResult(setIndexForecastedCumulant3(forecasterExp(result.getDoubleArray("value"), N),
-					result.getLongArray("time")));
-
-			result = checkResult(portfolio.getMetric(metricStringbuilder.setMetric("INDEX_CUMULANT4").getJSON()));
-			checkResult(setIndexForecastedCumulant4(forecasterExp(result.getDoubleArray("value"), N),
-					result.getLongArray("time")));
-
-		} catch (Exception e) {
-			if(portfolio.isDebug())
-				Console.writeStackTrace(e);
-			return new MethodResult(e.getMessage());
-		}
-
-		return new MethodResult();
-	}
-
-	
-	private double[]  forecasterExp(double[] x, int N ){
-		
-		double alpha = 2.0/(1.0+N);
-		double value=0;
-		double[] a = new double[x.length];
-		for(int i=0; i<x.length;i++){
-			double beta=2.0/(2.0+i);
-			
-			beta = Math.max(beta, alpha);
-			
-			value=value*(1.0-beta) + beta*x[i];
-			
-			a[i]=value;
-		}
-		
-		return a;			
-	};
-	
-
-	private MethodResult checkResult(
-			MethodResult result) throws Exception {
+	private MethodResult checkResult(MethodResult result) throws Exception {
 
 		if (result.hasError())
 			throw new Exception(result.getErrorMessage());
@@ -599,10 +385,9 @@ public class ForecastedValues{
 
 	}
 
-	
 	private int parseTimeInterval(String s, String where) throws Exception {
 
-		String ERROR = String.format(MessageStrings.INCOR_PARAM_FORMAT,  where);
+		String ERROR = String.format(MessageStrings.INCOR_PARAM_FORMAT, where);
 
 		String res[] = s.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
 
@@ -652,59 +437,47 @@ public class ForecastedValues{
 		try {
 
 			checkResult(isAllForecastedValuesPresent());
-			checkResult(portfolio.addUserData("expTimeStep", timeStep,
-					timeStepTimeMilliSec));
-
-			checkResult(portfolio.addUserData("IndexVarince",
-					forecastedIndexValue[1], forecastedIndexValueTime[1]));
-
-			if (isIndexCumulantPresent[0])
-				checkResult(portfolio.addUserData("IndexCumulant3",
-						forecastedIndexValue[2], forecastedIndexValueTime[2]));
-			else
-				checkResult(portfolio.addUserData("IndexSkewness",
-						forecastedIndexValue[2], forecastedIndexValueTime[2]));
+			checkResult(portfolio.addUserData("expTimeStep", timeStep, timeStepTimeMilliSec));
 
 			if (isIndexCumulantPresent[1])
-				checkResult(portfolio.addUserData("IndexCumulant4",
-						forecastedIndexValue[2], forecastedIndexValueTime[2]));
-			else
-				checkResult(portfolio.addUserData("IndexKurtosis",
-						forecastedIndexValue[2], forecastedIndexValueTime[2]));
+				checkResult(portfolio.addUserData("IndexVariance", forecastedIndexValue[1], forecastedIndexValueTime[1]));
+
+			if (isIndexCumulantPresent[2])
+				if (isIndexCumulantPresent[0])
+					checkResult(portfolio.addUserData("IndexCumulant3", forecastedIndexValue[2], forecastedIndexValueTime[2]));
+				else
+					checkResult(portfolio.addUserData("IndexSkewness", forecastedIndexValue[2], forecastedIndexValueTime[2]));
+
+			if (isIndexCumulantPresent[3])
+				if (isIndexCumulantPresent[1])
+					checkResult(portfolio.addUserData("IndexCumulant4", forecastedIndexValue[3], forecastedIndexValueTime[3]));
+				else
+					checkResult(portfolio.addUserData("IndexKurtosis", forecastedIndexValue[3], forecastedIndexValueTime[3]));
 
 			for (int i = 0; i < symbolNamber; i++) {
 
 				String symbol = symbolsName.get(i);
 
-				checkResult(portfolio.addUserData(symbol + "ExpReturn",
-						forecastedSymbolValue[i][0],
-						forecastedSymbolValueTime[i][0]));
-
-				checkResult(portfolio.addUserData(symbol + "Variance",
-						forecastedSymbolValue[i][1],
-						forecastedSymbolValueTime[i][1]));
-
 				if (isSymbolCumulantPresent[i][0])
-					checkResult(portfolio.addUserData(symbol + "Cumulant3",
-							forecastedSymbolValue[i][2],
-							forecastedSymbolValueTime[i][2]));
-				else
-					checkResult(portfolio.addUserData(symbol + "Skewness",
-							forecastedSymbolValue[i][2],
-							forecastedSymbolValueTime[i][2]));
+					checkResult(portfolio.addUserData(symbol + "ExpReturn", forecastedSymbolValue[i][0], forecastedSymbolValueTime[i][0]));
 
 				if (isSymbolCumulantPresent[i][1])
-					checkResult(portfolio.addUserData(symbol + "Cumulant4",
-							forecastedSymbolValue[i][2],
-							forecastedSymbolValueTime[i][3]));
-				else
-					checkResult(portfolio.addUserData(symbol + "Kurtosis",
-							forecastedSymbolValue[i][2],
-							forecastedSymbolValueTime[i][3]));
+					checkResult(portfolio.addUserData(symbol + "Variance", forecastedSymbolValue[i][1], forecastedSymbolValueTime[i][1]));
 
-				checkResult(portfolio.addUserData(symbol + "Beta",
-						forecastedSymbolValue[i][4],
-						forecastedSymbolValueTime[i][4]));
+				if (isSymbolCumulantPresent[i][2])
+					if (isCumulants[i][0])
+						checkResult(portfolio.addUserData(symbol + "Cumulant3", forecastedSymbolValue[i][2], forecastedSymbolValueTime[i][2]));
+					else
+						checkResult(portfolio.addUserData(symbol + "Skewness", forecastedSymbolValue[i][2], forecastedSymbolValueTime[i][2]));
+
+				if (isSymbolCumulantPresent[i][3])
+					if (isCumulants[i][1])
+						checkResult(portfolio.addUserData(symbol + "Cumulant4", forecastedSymbolValue[i][2], forecastedSymbolValueTime[i][3]));
+					else
+						checkResult(portfolio.addUserData(symbol + "Kurtosis", forecastedSymbolValue[i][2], forecastedSymbolValueTime[i][3]));
+
+				if (isSymbolCumulantPresent[i][4])
+					checkResult(portfolio.addUserData(symbol + "Beta", forecastedSymbolValue[i][4], forecastedSymbolValueTime[i][4]));
 			}
 
 		} catch (Exception e) {
