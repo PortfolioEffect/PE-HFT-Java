@@ -4,8 +4,20 @@
  * %%
  * Copyright (C) 2011 - 2015 Snowfall Systems, Inc.
  * %%
- * This software may be modified and distributed under the terms
- * of the BSD license.  See the LICENSE file for details.
+ * This file is part of PortfolioEffect Quant Client.
+ * 
+ * PortfolioEffect Quant Client is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * PortfolioEffect Quant Client is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with PortfolioEffect Quant Client. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
 package com.portfolioeffect.quant.client;
@@ -152,9 +164,6 @@ public class ClientConnection  {
 
 	}
 
-	/*
-	 * ~Public methods
-	 */
 
 	public long getIdC() {
 		return idClient;
@@ -667,14 +676,14 @@ public class ClientConnection  {
 
 	}
 
-	public MethodResult transmitDataList(String fromTime, String toTime, ArrayList<String> dataList, String windowLength, String priceSamplingInterval)
+	public MethodResult transmitDataList(String fromTime, String toTime, ArrayList<String> dataList, String windowLength, String priceSamplingInterval, String momentsModel )
 			throws Exception {
 		timeDataFast.reset();
 		timeDataTransmit.reset();
 
 		String requestType = "CHECK_DATA";
 
-		TransmitDataListMessage dataListMessage = new TransmitDataListMessage(dataList, windowLength, fromTime, toTime, priceSamplingInterval);
+		TransmitDataListMessage dataListMessage = new TransmitDataListMessage(dataList, windowLength, fromTime, toTime, priceSamplingInterval, momentsModel);
 
 		Gson gson = new Gson();
 		Type mapType = new TypeToken<TransmitDataListMessage>() {
@@ -780,7 +789,7 @@ public class ClientConnection  {
 
 				try {
 					clearStatus();
-					Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(), "false", estimatorType,
+					Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  estimatorType, "false",
 							priceBlock, timeSecBlock, getOutboundMsgSequenceNumber(), System.currentTimeMillis());
 
 					Message responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
@@ -855,7 +864,7 @@ public class ClientConnection  {
 				}
 
 				try {
-					data = new PriceDataSet(priceBlock, timeSecBlock);
+					 data = new PriceDataSet(priceBlock, timeSecBlock);
 				} catch (Exception e) {
 
 					return new MethodResult(e.getMessage());
@@ -867,7 +876,7 @@ public class ClientConnection  {
 
 			try {
 
-				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(), "true", estimatorType, priceBlock,
+				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  estimatorType, "true", priceBlock,
 						timeSecBlock, getOutboundMsgSequenceNumber(), System.currentTimeMillis());
 
 				Message responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
@@ -941,6 +950,104 @@ public class ClientConnection  {
 		return resultA;
 	}
 
+
+	public MethodResult estimateEstimator(String metricType) throws Exception {
+
+		HashMap<String, String> info = new HashMap<String, String>();
+		ArrayCache resultValueList = null;
+		ArrayCache resultTimeList = null;
+
+		boolean isRun = true;
+		boolean isFirstBlock = true;
+		double percent = 0;
+
+		int[] dimensions = null;
+		progressBar.printCompletionStatus(percent);
+		
+		
+		while (isRun) {
+
+			clearStatus();
+			Message responseMsg;
+			if (isFirstBlock) {
+
+				resultValueList = new ArrayCache(ArrayCacheType.DOUBLE_VECTOR);
+				resultTimeList = new ArrayCache(ArrayCacheType.LONG_VECTOR);
+
+				
+				//Gson gson = new Gson();
+
+								
+				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  metricType, "",
+						new double[1], new int[1], getOutboundMsgSequenceNumber(), System.currentTimeMillis());
+
+
+
+				responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
+				
+				
+						
+
+				
+
+				isFirstBlock = false;
+			} else {
+
+				
+				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  metricType, "#NEXT#",
+						new double[1], new int[1], getOutboundMsgSequenceNumber(), System.currentTimeMillis());
+
+
+				responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
+
+			}
+
+			TransmitDataRequest response = ServerResponseMessageParser.parseTransmitDataRequest(responseMsg);
+
+			if (response.getMsgType().contains("OK")) {
+
+				Gson gson = new Gson();
+				Type mapType = new TypeToken<CalculationStatusMessage>() {
+				}.getType();
+
+				CalculationStatusMessage statusMessg = gson.fromJson(response.getMsgType(), mapType);
+
+				dimensions = statusMessg.getDimension();
+
+				float[] data = response.getDataFloat();
+				long[] time = response.getTime();
+
+				resultValueList.writeAsDouble(data);
+
+				resultTimeList.write(time);
+
+				percent = Double.valueOf(response.getMsgBody());
+				progressBar.printCompletionStatus(percent);
+
+				if (response.getMsgType().contains("STOP")) {
+
+					info = statusMessg.getResultInfo();
+
+					isRun = false;
+				}
+			} else {
+
+				throw new Exception(response.getMsgBody());
+			}
+		}
+
+		if (dimensions != null)
+			resultValueList.setDimensions(dimensions);
+
+		MethodResult result = new MethodResult();
+		result.setData("value", resultValueList);
+		result.setData("time", resultTimeList);
+		result.setInfo(info);
+
+		return result;
+	}
+
+	
 	public MethodResult estimateTransactional(String metricType, String indexPosition, ArrayList<String> positionList, String params) throws Exception {
 
 		HashMap<String, String> info = new HashMap<String, String>();
@@ -953,8 +1060,8 @@ public class ClientConnection  {
 
 		int[] dimensions = null;
 		progressBar.printCompletionStatus(percent);
-		double sum = 0;
-		int len = 0;
+		
+		
 		while (isRun) {
 
 			clearStatus();
@@ -1352,6 +1459,19 @@ public class ClientConnection  {
 	public String getStatus() {
 		return callStatus.toString();
 	}
+	
+	
+	@Override
+	protected void finalize() throws Throwable {
+		
+		this.stop();
+
+		super.finalize();
+	}
+
+		
+		
+	
 
 
 }

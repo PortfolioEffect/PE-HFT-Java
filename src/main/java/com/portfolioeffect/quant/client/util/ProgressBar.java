@@ -4,8 +4,20 @@
  * %%
  * Copyright (C) 2011 - 2012 Snowfall Systems, Inc.
  * %%
- * This software may be modified and distributed under the terms
- * of the BSD license.  See the LICENSE file for details.
+ * This file is part of PortfolioEffect Quant Client.
+ * 
+ * PortfolioEffect Quant Client is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * PortfolioEffect Quant Client is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with PortfolioEffect Quant Client. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
 package com.portfolioeffect.quant.client.util;
@@ -20,9 +32,7 @@ public class ProgressBar {
 	private long  startTime;
 	private boolean isON = true;
 	
-	/**
-	 * 
-	 */
+	
 	private double scale = 1 ;
 	
 
@@ -72,7 +82,7 @@ public class ProgressBar {
 		while(curentPercent<= percentInt ){
 		if (curentPercent == 0 && oldPercent != 0) {
 			oldPercent = curentPercent;
-			if(isON)
+			if(isON && percentInt==0)
 				Console.write("[" + percentInt + "%");
 			startTime = System.currentTimeMillis();
 			//return;
@@ -85,7 +95,7 @@ public class ProgressBar {
 			oldPercent = curentPercent;
 			if(isON)
 				Console.writeln("100%] ( " + sec  +" sec )");
-			//return;
+			
 			break;
 		}
 		if ((curentPercent > oldPercent) && (curentPercent % 2 > 0)) {

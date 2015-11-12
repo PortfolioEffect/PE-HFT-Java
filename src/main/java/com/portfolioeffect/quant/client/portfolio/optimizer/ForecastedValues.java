@@ -4,22 +4,30 @@
  * %%
  * Copyright (C) 2011 - 2015 Snowfall Systems, Inc.
  * %%
- * This software may be modified and distributed under the terms
- * of the BSD license.  See the LICENSE file for details.
+ * This file is part of PortfolioEffect Quant Client.
+ * 
+ * PortfolioEffect Quant Client is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * PortfolioEffect Quant Client is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with PortfolioEffect Quant Client. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
 package com.portfolioeffect.quant.client.portfolio.optimizer;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.function.Function;
-
 import com.portfolioeffect.quant.client.portfolio.ArrayCache;
 import com.portfolioeffect.quant.client.portfolio.Portfolio;
 import com.portfolioeffect.quant.client.result.MethodResult;
-import com.portfolioeffect.quant.client.util.Console;
 import com.portfolioeffect.quant.client.util.MessageStrings;
-import com.portfolioeffect.quant.client.util.MetricStringBuilder;
 
 public class ForecastedValues {
 
@@ -35,7 +43,7 @@ public class ForecastedValues {
 	private ArrayCache[] forecastedIndexValueTime;
 
 	private boolean[][] isCumulants;
-	private boolean[] isCumulantsIndex ={false, false};
+	private boolean[] isCumulantsIndex = { false, false };
 
 	private boolean isTimeStep;
 	private ArrayCache timeStep;
@@ -80,32 +88,12 @@ public class ForecastedValues {
 	public MethodResult isAllForecastedValuesPresent() {
 
 		String symbols = "";
-		//
-		// for (int i = 0; i < 4; i++) {
-		// if (!isIndexCumulantPresent[i]) {
-		// symbols += "Index-forecasted cumulant" + (i + 1) + ";\n";
-		// }
-		// }
 
 		if (!isTimeStep) {
 
 			symbols += "forecast time step;\n";
 
 		}
-
-		// for (int i = 0; i < symbolNamber; i++) {
-		// for (int j = 0; j < 4; j++) {
-		// if (!isSymbolCumulantPresent[i][j]) {
-		// symbols += symbolsName.get(i) + "-forecasted cumulant"
-		// + (j + 1) + ";\n";
-		// }
-		// }
-		//
-		// if (!isSymbolCumulantPresent[i][4]) {
-		// symbols += symbolsName.get(i) + "-forecasted beta;\n";
-		// }
-		//
-		// }
 
 		if (symbols.equals(""))
 			return new MethodResult();
@@ -263,8 +251,6 @@ public class ForecastedValues {
 
 		isSymbolCumulantPresent[index][3] = true;
 
-		
-
 		return new MethodResult();
 	}
 
@@ -330,8 +316,6 @@ public class ForecastedValues {
 
 		isIndexCumulantPresent[2] = true;
 
-		
-
 		return new MethodResult();
 	}
 
@@ -350,8 +334,6 @@ public class ForecastedValues {
 		}
 
 		isIndexCumulantPresent[3] = true;
-
-		
 
 		return new MethodResult();
 	}
@@ -374,7 +356,6 @@ public class ForecastedValues {
 		isCumulantsIndex[1] = true;
 		return result;
 	}
-
 
 	private MethodResult checkResult(MethodResult result) throws Exception {
 

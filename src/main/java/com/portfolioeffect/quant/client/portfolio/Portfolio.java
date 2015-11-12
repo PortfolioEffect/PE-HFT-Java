@@ -4,8 +4,20 @@
  * %%
  * Copyright (C) 2011 - 2015 Snowfall Systems, Inc.
  * %%
- * This software may be modified and distributed under the terms
- * of the BSD license.  See the LICENSE file for details.
+ * This file is part of PortfolioEffect Quant Client.
+ * 
+ * PortfolioEffect Quant Client is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * PortfolioEffect Quant Client is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with PortfolioEffect Quant Client. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
 package com.portfolioeffect.quant.client.portfolio;
@@ -45,6 +57,7 @@ public class Portfolio {
 	private ArrayList<String> batchMetricsPosition;
 	private ArrayList<String> batchMetricsPortfolio;
 	private long[] samplingTimes = null;
+	private boolean isBatchStart = false;
 
 	private List<CacheKey> cachedValueList;
 	private PortfolioCache portfolioCache;
@@ -88,24 +101,6 @@ public class Portfolio {
 	}
 
 	private void setDefaultParams() {
-
-		// this params set on the server
-		// setParam("windowLength","1d");
-		// setParam("timeScale","1d");
-		// setParam("samplingInterval","1s");
-		// setParam("priceSamplingInterval","0s");
-		// setParam("shortSalesMode","lintner"); //"markowitz"
-		// setParam("jumpsModel","moments");
-		// setParam("factorModel","sim"); //direct"
-		//
-		//
-		// setParam("isPriceJumpsFilterEnabled", String.valueOf(false));
-		// setParam("isHoldingPeriodEnabled", String.valueOf(false));
-		// setParam("isRebalancingHistoryEnabled", String.valueOf(true));
-		// setParam("isNoiseModelEnabled", String.valueOf(true));
-		// setParam("isJumpsModelEnabled", String.valueOf(true));
-		// setParam("isTimeScalingModelEnabled", String.valueOf(true));
-		// setParam("isNonGaussianModelEnabled", String.valueOf(true));
 
 		portfolioData.setFromTime("#");
 		portfolioData.setToTime("#");
@@ -765,6 +760,11 @@ public class Portfolio {
 	}
 
 	public MethodResult getMetric(String metricType) {
+		if(isBatchStart){
+			addMetricToBatch(metricType);
+			return new MethodResult();
+		}
+		
 		MethodResult result = getMetric(metricType, "");
 		return result;
 	}
@@ -785,9 +785,10 @@ public class Portfolio {
 		}
 
 		String windowLength = getParam("windowLength");
-		String priceSamplingInterval = getParam("priceSamplingInterval");
+		String priceSamplingInterval = getParam("priceSamplingInterval"); 
+		String momentsModel  = getParam("riskMethodology"); 
 		MethodResult result = clientConnection.transmitDataList(portfolioData.getFromTime(), portfolioData.getToTime(), dataList, windowLength,
-				priceSamplingInterval);
+				priceSamplingInterval, momentsModel);
 
 		if (result.hasError()){
 			processNoCashError(result.getErrorMessage());
@@ -892,6 +893,8 @@ public class Portfolio {
 
 	public MethodResult getMetric(String metricType, String params) {
 
+		
+		
 		if (portfolioData.getFromTime().length() == 0 || portfolioData.getToTime().length() == 0) {
 			clientConnection.resetProgressBar();
 			return new MethodResult("Set time interval  first");
@@ -1136,6 +1139,8 @@ public class Portfolio {
 
 	public MethodResult finishBatch() {
 
+		isBatchStart = false;
+		
 		if (batchMetricsPortfolio == null && batchMetricsPosition == null)
 			return new MethodResult();
 
@@ -1252,10 +1257,10 @@ public class Portfolio {
 				String[] positions = null;
 				{
 
-					// System.out.println("validate-->");
+
 
 					MethodResult result = clientConnection.validateStringRequest(metricsType);
-					// System.out.println(">---validate");
+			
 
 					if (result.hasError()) {
 						throw new Exception(result.getErrorMessage());
@@ -1700,10 +1705,11 @@ public class Portfolio {
 		return getParam("samplingInterval");
 	}
 
-	/**
+	/** 
+	 * set times when the data are calculated 
 	 * 
-	 * @param samplingIntervalServer
-	 *            "all" or "none" - with out sampling ; "Xs" X -seconds; "Xm" X
+	 * @param samplingIntervalServer 
+	 *            "all" or  - with out sampling ; "Xs" X -seconds; "Xm" X
 	 *            -minutes; "Xh" X - hours; "Xd" X -days; "Xw" X -weeks; "Xmo" X
 	 *            - months; "Xy" X - years; "last" - only final result
 	 */
@@ -1718,6 +1724,11 @@ public class Portfolio {
 		return samplingTimes;
 	}
 
+	/**
+	 * set times when the data are calculated
+	 * 
+	 * @param samplingTimes - arrays of data milliseconds  
+	 */
 	public void setSamplingInterval(long[] samplingTimes) {
 
 		this.samplingTimes = samplingTimes;
@@ -1737,7 +1748,9 @@ public class Portfolio {
 		clearCache();
 	}
 
+	
 	public void startBatch() {
+		isBatchStart = true;
 		batchMetricsPosition = new ArrayList<String>();
 		batchMetricsPortfolio = new ArrayList<String>();
 	}
@@ -1772,8 +1785,7 @@ public class Portfolio {
 
 	/**
 	 * 
-	 * @param shortSalesMode
-	 *            "lintner" "markowitz"
+	 * @param shortSalesMode =  "lintner"  or "markowitz"
 	 */
 	public void setShortSalesMode(String shortSalesMode) {
 		setParam("shortSalesMode", shortSalesMode);
@@ -1784,6 +1796,15 @@ public class Portfolio {
 		return getParam("priceSamplingInterval");
 	}
 
+	
+	/**
+	 *  set sampling times for price from data base  
+	 *  
+	 * @param priceSamplingInterval 
+	 * "all" or  - with out sampling ; "Xs" X -seconds; "Xm" X
+	 *            -minutes; "Xh" X - hours; "Xd" X -days; "Xw" X -weeks; "Xmo" X
+	 *            - months; "Xy" X - years; "last" - only final result
+	 */
 	public void setPriceSamplingInterval(String priceSamplingInterval) {
 		setParam("priceSamplingInterval", priceSamplingInterval);
 		clearCache();
@@ -1793,6 +1814,12 @@ public class Portfolio {
 		return portfolioData.getIndexSymbol();
 	}
 
+	/**
+	 * 
+	 * 	 
+	 * @param factorModel = "sim" for single index model  or "direct" for direct model 
+	 * 
+	 */
 	public void setFactorModel(String factorModel) {
 		setParam("factorModel", factorModel);
 		clearCache();
@@ -1808,9 +1835,10 @@ public class Portfolio {
 	}
 
 	/**
+	 *  set model type for filtering jumps
 	 * 
-	 * @param jumpsModel
-	 *            moments none all
+	 * @param jumpsModel = "moments" - filtering jumps happens only in the calculation of moments  and related metrics,    
+	 *   "none"  jumps is not filtering,  "all"  filtering jumps happens for all metrics including price as metrics
 	 */
 	public void setJumpsModel(String jumpsModel) {
 		setParam("jumpsModel", jumpsModel);
@@ -1821,6 +1849,17 @@ public class Portfolio {
 		return getParam("jumpsModel");
 	}
 
+	
+	/**
+	 * 
+	 * @param windowLengthString 
+	 *             "Xs" X -seconds; "Xm" X
+	 *            -minutes; "Xh" X - hours; "Xd" X -days; "Xw" X -weeks; "Xmo" X
+	 *            - months; "Xy" X - years; 
+	 *              
+	 *              "all"   - cumulative value without window
+	 * 
+	 */
 	public void setWindowLength(String windowLengthString) {
 		setParam("windowLength", windowLengthString);
 		clearCache();
@@ -1831,6 +1870,16 @@ public class Portfolio {
 		return getParam("windowLength");
 	}
 
+	/**
+	 * time scale 
+	 * 
+	 *   "Xs" X -seconds; "Xm" X
+	 *            -minutes; "Xh" X - hours; "Xd" X -days; "Xw" X -weeks; "Xmo" X
+	 *            - months; "Xy" X - years; 
+	 *  
+	 * 
+	 * @param timeScaleSecString
+	 */
 	public void setTimeScale(String timeScaleSecString) {
 		setParam("timeScale", timeScaleSecString);
 		clearCache();
@@ -1859,7 +1908,10 @@ public class Portfolio {
 	public void setClientConnection(ClientConnection clientConnection) {
 		this.clientConnection = clientConnection;
 	}
-
+    /**
+     * transaction cost per share 
+     * @param value
+     */
 	public void setTxnCostPerShare(double value) {
 		setParam("txnCostPerShare", String.valueOf(value));
 	}
@@ -1868,6 +1920,11 @@ public class Portfolio {
 		return Double.valueOf(getParam("txnCostPerShare"));
 	}
 
+	/**
+	 * transaction cost fixed
+	 * 
+	 * @param value
+	 */
 	public void setTxnCostFixed(double value) {
 		setParam("txnCostFixed", String.valueOf(value));
 	}
@@ -1883,7 +1940,37 @@ public class Portfolio {
 	public void setDriftEnabled(boolean isDriftEnabled) {
 		setParam("isDriftEnabled", String.valueOf(isDriftEnabled));
 	}
+	
+	/**
+	 * 
+	 * @param model  = "PortfolioEffect" or "RiskMetrics"
+	 */
+	public void setRiskMethodology(String model){
+		setParam("riskMethodology", model);
+		if(getParam("priceSamplingInterval").equals("") && model.equals("RiskMetrics"))
+			setParam("priceSamplingInterval", "1d");
+	}
+	
+	public String getRiskMethodology(){
+		return getParam("riskMethodology");
+	}
+	
+	public void setLambdaRiskMetrics(double lambda){
+		setParam("lambdaRiskMetrics", String.valueOf(lambda));
+	}
+	
+	public double getLambdaRiskMetrics(){
+		return Double.valueOf( getParam("lambdaRiskMetrics") );
+	}
 
+	/**
+	 *  
+	 *  
+	 * @param densityApproxModel  = "GLD" -generalized lambda distribution, 
+	 *	  "CORNISH_FISHER" - Cornish Fisher expansion
+	 *	  "NORMAL" - normal distribution
+	 */
+	
 	public void setDensityApproxModel(String densityApproxModel) {
 		setParam("densityApproxModel", densityApproxModel);
 	}
@@ -1891,7 +1978,7 @@ public class Portfolio {
 	public String getDensityApproxModelString() {
 		return getParam("densityApproxModel");
 	}
-
+    
 	public void setPortfolioMetricsMode(String mode) {
 		setParam("portfolioMetricsMode", mode);
 	}
@@ -1906,6 +1993,14 @@ public class Portfolio {
 
 	public boolean isStartWhenBurn() {
 		return Boolean.valueOf(getParam("isStartWhenBurn"));
+	}
+	
+	public void setFractalPriceModelEnabled(boolean flag){
+		setParam("isFractalPriceModelEnabled", ""+flag);
+	}
+	
+	public boolean  isFractalPriceModelEnabled(){
+		return Boolean.valueOf(getParam("isFractalPriceModelEnabled"));
 	}
 
 }

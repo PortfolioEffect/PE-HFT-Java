@@ -4,8 +4,20 @@
  * %%
  * Copyright (C) 2011 - 2015 Snowfall Systems, Inc.
  * %%
- * This software may be modified and distributed under the terms
- * of the BSD license.  See the LICENSE file for details.
+ * This file is part of PortfolioEffect Quant Client.
+ * 
+ * PortfolioEffect Quant Client is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * PortfolioEffect Quant Client is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with PortfolioEffect Quant Client. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
 package com.portfolioeffect.quant.client.util;
@@ -15,6 +27,7 @@ package com.portfolioeffect.quant.client.util;
 import java.util.HashMap;
 
 import com.google.gson.Gson;
+import com.portfolioeffect.quant.client.type.MetricsType;
 
 
 public class MetricStringBuilder {
@@ -24,8 +37,13 @@ public class MetricStringBuilder {
 	
 	public MetricStringBuilder setMetric(String metric){
 		map.put("metric",""+metric);
+		return this;	
+	}
+	
+	public MetricStringBuilder setMetric(MetricsType metric) {
+		map.put("metric", "" + metric);
 		return this;
-		
+
 	}
 	
 	public MetricStringBuilder setPosition(String position){
@@ -47,10 +65,8 @@ public class MetricStringBuilder {
 	}
 	public MetricStringBuilder setSortDirectionToDescending(){
 		map.put("sort_direction","descending");//ascending  -- descending
-		return this;
-		
+		return this;	
 	}
-	
 	
 	
 	public MetricStringBuilder setValue(String metric){
@@ -75,8 +91,19 @@ public class MetricStringBuilder {
 	public MetricStringBuilder setConfidenceIntervalAlphaBeta( double confidenceIntervalAlpha, double confidenceIntervalBeta){
 		map.put("confidenceIntervalAlpha",""+confidenceIntervalAlpha);
 		map.put("confidenceIntervalBeta",""+confidenceIntervalBeta);
+		return this;	
+	}
+	
+	public MetricStringBuilder setPositionA(String position) {
+		map.put("positionA", position);
 		return this;
-		
+
+	}
+	
+	public MetricStringBuilder setPositionB(String position) {
+		map.put("positionB", position);
+		return this;
+
 	}
 	
 	public MetricStringBuilder setLag(int lag){
@@ -93,21 +120,14 @@ public class MetricStringBuilder {
 	
 	
 	public MetricStringBuilder reset(){
-		map.clear();
-		
+		map.clear();	
 		return this;
 	}
 	
 	
 	public  String getJSON(){
-		
 		Gson gson = new Gson();
-		
 		return gson.toJson(map);
-		
 	}
-	
-	
- 
 
 }

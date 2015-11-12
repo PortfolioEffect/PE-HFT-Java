@@ -4,8 +4,20 @@
  * %%
  * Copyright (C) 2011 - 2015 Snowfall Systems, Inc.
  * %%
- * This software may be modified and distributed under the terms
- * of the BSD license.  See the LICENSE file for details.
+ * This file is part of PortfolioEffect Quant Client.
+ * 
+ * PortfolioEffect Quant Client is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * PortfolioEffect Quant Client is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with PortfolioEffect Quant Client. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
 package com.portfolioeffect.quant.client.result;
@@ -21,7 +33,7 @@ import com.portfolioeffect.quant.client.portfolio.Portfolio;
 import com.portfolioeffect.quant.client.util.MessageStrings;
 
 public class MethodResult {
-	
+
 	private final boolean hasError;
 	private final boolean hasWarning;
 	private final String errorMessage;
@@ -31,9 +43,7 @@ public class MethodResult {
 	private HashMap<String, String> infoParams = new HashMap<String, String>();
 	private Map<String, Object> data = new HashMap<String, Object>();
 	private Map<String, String> dataType = new HashMap<String, String>();
-	
 
-	
 	public MethodResult() {
 		this.hasError = false;
 		this.hasWarning = false;
@@ -66,7 +76,7 @@ public class MethodResult {
 		this.warningMessage = "";
 
 	}
-	
+
 	public HashMap<String, String> getInfoParams() {
 		return infoParams;
 	}
@@ -79,18 +89,17 @@ public class MethodResult {
 		infoParams.putAll(info);
 	}
 
-	public String getDataType(String key){
+	public String getDataType(String key) {
 		return dataType.get(key);
 	}
-	
+
 	public void setData(String key, ArrayCache value) {
 		data.put(key, value);
 		dataType.put(key, value.getType().toString());
 	}
 
-
 	public ArrayCache getDataArrayCache(String key) {
-			
+
 		return (ArrayCache) data.get(key);
 	}
 
@@ -104,7 +113,6 @@ public class MethodResult {
 		return (String) data.get(key);
 	}
 
-	
 	public String[] getDataNames() {
 		return data.keySet().toArray(new String[data.keySet().size()]);
 	}
@@ -183,7 +191,7 @@ public class MethodResult {
 
 	public String getInfoParam(String key) {
 		if (!infoParams.containsKey(key))
-			return String.format(MessageStrings.NO_PARAM,  key);
+			return String.format(MessageStrings.NO_PARAM, key);
 		else
 			return infoParams.get(key);
 	}
