@@ -2,10 +2,10 @@
   <img width="200" src="https://www.portfolioeffect.com/img/logo/portfolioeffect-logo-full-200-950.png" alt="PortfolioEffect">
 </a>
 
-# PortfolioEffect Quant - Java Library 
+# PortfolioEffectHFT - Java Library 
 
-Java API for PortfolioEffect that allows portfolio analysis, strategy backtesting and portfolio 
-optimization using client and server-side high frequency market data.
+Java API to PortfolioEffect Quant service for high frequency trading (HFT) strategy backtests, intraday portfolio 
+analysis and portfolio optimization.
 
 ## About PortfolioEffect
 
