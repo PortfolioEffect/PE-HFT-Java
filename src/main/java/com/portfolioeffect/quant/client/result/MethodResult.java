@@ -34,6 +34,7 @@ import com.portfolioeffect.quant.client.util.MessageStrings;
 
 public class MethodResult {
 
+	private boolean hasResult;
 	private final boolean hasError;
 	private final boolean hasWarning;
 	private final String errorMessage;
@@ -50,6 +51,7 @@ public class MethodResult {
 		this.errorMessage = "";
 		this.message = "";
 		this.warningMessage = "";
+		this.hasResult = false;
 	}
 
 	public MethodResult(String errorMessage) {
@@ -58,6 +60,7 @@ public class MethodResult {
 		this.errorMessage = errorMessage;
 		this.message = "";
 		this.warningMessage = "";
+		this.hasResult = false;
 	}
 
 	public MethodResult(String errorMessage, String warnnigMessage) {
@@ -66,6 +69,7 @@ public class MethodResult {
 		this.errorMessage = errorMessage;
 		this.message = "";
 		this.warningMessage = warnnigMessage;
+		this.hasResult = false;
 	}
 
 	public MethodResult(boolean hasError, String errorMessage) {
@@ -74,6 +78,7 @@ public class MethodResult {
 		this.message = "";
 		this.hasWarning = false;
 		this.warningMessage = "";
+		this.hasResult = false;
 
 	}
 
@@ -83,10 +88,13 @@ public class MethodResult {
 
 	public void setInfoParams(HashMap<String, String> infoParams) {
 		this.infoParams = infoParams;
+		this.hasResult = true;
 	}
 
 	public void setInfo(HashMap<String, String> info) {
 		infoParams.putAll(info);
+		this.hasResult = true;
+		
 	}
 
 	public String getDataType(String key) {
@@ -96,6 +104,7 @@ public class MethodResult {
 	public void setData(String key, ArrayCache value) {
 		data.put(key, value);
 		dataType.put(key, value.getType().toString());
+		this.hasResult = true;
 	}
 
 	public ArrayCache getDataArrayCache(String key) {
@@ -125,11 +134,16 @@ public class MethodResult {
 	public void setPortfolio(String key, Portfolio portfolio) {
 		dataType.put(key, "PORTFOLIO");
 		data.put(key, portfolio);
+		this.hasResult = true;
 	}
 
 	public long[] getLongArray(String key) {
 		try {
-			return ((ArrayCache) data.get(key)).getLongArray();
+			if(data.containsKey("value"))
+				return ((ArrayCache) data.get(key)).getLongArray( getDataArrayCache("value") );
+			else
+				return ((ArrayCache) data.get(key)).getLongArray();
+			
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 
@@ -140,7 +154,7 @@ public class MethodResult {
 
 		long[] x = new long[] { -1 };
 		try {
-			x = ((ArrayCache) data.get(key)).getLongArray();
+			x = ((ArrayCache) data.get(key)).getLongArray(getDataArrayCache("value"));
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -325,14 +339,42 @@ public class MethodResult {
 		}
 	}
 
+		
 	public String[] getStringArray(String key) {
+		try {
+			return ((ArrayCache) data.get(key)).getStringArray();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 
-		return (String[]) data.get(key);
 	}
 
-	public void setStringArray(String key, String[] stringArray) {
-		dataType.put(key, "STRING_VECTOR");
-		data.put(key, stringArray);
+	public boolean isHasResult() {
+		return hasResult;
 	}
+	
+	public boolean isNaNFiltered() {
+		if(data.containsKey("value"))
+			return getDataArrayCache("value").isNaNFiltered();
+		return true;
+	}
+
+	public void setNaNFiltered(boolean isNaNFiltered) {
+		if(data.containsKey("value"))
+			getDataArrayCache("value").setNaNFiltered(isNaNFiltered);
+		
+	}
+
+	public boolean isNaN2Zero() {
+		if(data.containsKey("value"))
+			return getDataArrayCache("value").isNaN2Zero();
+		return true;
+	}
+
+	public void setNaN2Zero(boolean isNaN2Zero) {
+		if(data.containsKey("value"))
+			getDataArrayCache("value").setNaN2Zero(isNaN2Zero);
+	}
+
 
 }

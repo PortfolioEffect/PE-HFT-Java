@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 
 import com.portfolioeffect.quant.client.util.Console;
 import com.portfolioeffect.quant.client.util.MessageStrings;
@@ -43,10 +44,11 @@ public class ArrayCache {
 	private int[] dimensions = new int[] { 1 };
 	private boolean isAllZero = true;
 	private ArrayCacheType type;
+	private int nanNumber=0;
 
-	public ArrayCacheType getType() {
-		return type;
-	}
+
+	private boolean isNaNFiltered=true;
+	private boolean isNaN2Zero=false;
 
 	private boolean inUse = false;
 
@@ -66,37 +68,53 @@ public class ArrayCache {
 
 	public ArrayCache(double[] value) throws IOException {
 		this(ArrayCacheType.DOUBLE_VECTOR);
-		
+
 		write(value);
-		
+
 		closeOut();
 	}
-	
+
+	public ArrayCache(String[] value) throws IOException {
+		this(ArrayCacheType.STRING_VECTOR);
+
+		write(value);
+
+		closeOut();
+	}
+
+
+	private void nanFilter(double value){		
+
+		if(Double.isNaN(value))
+			nanNumber++;
+
+	}
+
 	public ArrayCache(double[][] value) throws IOException {
 		this(ArrayCacheType.DOUBLE_MATRIX);
-		
-			dimensions=new int[]{value[0].length};			 
-			for(int i=0; i<value.length;i++)
-				write(value[i]);
-		
-		
+
+		dimensions=new int[]{value[0].length};			 
+		for(int i=0; i<value.length;i++)
+			write(value[i]);
+
+
 		closeOut();
 	}
-	
+
 	public ArrayCache(float[] value) throws IOException {
 		this(ArrayCacheType.DOUBLE_VECTOR);
-		
-			writeAsDouble(value);
-		
+
+		writeAsDouble(value);
+
 		closeOut();
 	}
 
 	public ArrayCache(long[] value) throws IOException {
 		this(ArrayCacheType.LONG_VECTOR);
 
-		
-			write(value);
-		
+
+		write(value);
+
 		closeOut();
 
 	}
@@ -104,9 +122,9 @@ public class ArrayCache {
 	public ArrayCache(int[] value) throws IOException {
 		this(ArrayCacheType.INT_VECTOR);
 
-		
-			write(value);
-		
+
+		write(value);
+
 		closeOut();
 
 	}
@@ -173,16 +191,31 @@ public class ArrayCache {
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
 		size += value.length;
 		for (double e : value) {
+			nanFilter(e);
 			isAllZero = isAllZero && e == 0.0;
 			outStream.writeDouble(e);
 		}
 	}
+
+	public void write(String[] value) throws IOException  {
+
+		if (type != ArrayCacheType.STRING_VECTOR)
+			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
+		size += value.length;
+		byte[] splitSymbol=(new String("#-#")).getBytes();
+		for (String e : value) {
+			outStream.write(e.getBytes());
+			outStream.write(splitSymbol);
+		}
+	}
+
 
 	public void write(float[] value) throws IOException  {
 		if (type != ArrayCacheType.FLOAT_VECTOR && type != ArrayCacheType.FLOAT_MATRIX)
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
 		size += value.length;
 		for (float e : value) {
+			nanFilter(e);
 			isAllZero = isAllZero && e == 0.0;
 			outStream.writeFloat(e);
 		}
@@ -192,9 +225,11 @@ public class ArrayCache {
 		if (type != ArrayCacheType.DOUBLE_VECTOR && type != ArrayCacheType.DOUBLE_MATRIX)
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
 		size += value.length;
-		
+
 		for (int i = 0; i < value.length; i++) {
+
 			double x = value[i];
+			nanFilter(x);
 			isAllZero = isAllZero && x == 0.0;
 			outStream.writeDouble(x);
 		}
@@ -205,6 +240,7 @@ public class ArrayCache {
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
 		size += value.length;
 		for (double e : value) {
+			nanFilter(e);
 			isAllZero = isAllZero && e == 0.0;
 			outStream.writeFloat((float) e);
 		}
@@ -245,34 +281,20 @@ public class ArrayCache {
 		openInput();
 		if (type != ArrayCacheType.DOUBLE_VECTOR)
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
-		
-		double[] value = new double[size];
-		for (int i = 0; i < size; i++) {
-		
-			value[i] = inStream.readDouble();
+
+		double[] value;// = new double[size];
+		if(isNaNFiltered)
+			value= new double[size-nanNumber];
+		else
+			value= new double[size];
+		for (int i = 0, j=0; i < size; i++) {
+			double x=inStream.readDouble();
+			if(isNaNFiltered && Double.isNaN(x))
+				continue;
+			if(isNaN2Zero && Double.isNaN(x))
+				x=0.0;
+			value[j++] =  x;
 		}
-		closeInput();
-
-		return value;
-	}
-
-	public double[][] getDoubleMatrix() throws IOException  {
-		closeOut();
-		openInput();
-		
-		
-		if ( type != ArrayCacheType.DOUBLE_MATRIX )
-			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
-		if (dimensions.length != 1) {
-			throw new RuntimeException(MessageStrings.WRONG_RESULT_FORMAT);
-		}
-
-		double[][] value = new double[size / dimensions[0]][dimensions[0]];
-
-		for (int i = 0; i < value.length; i++)
-			for (int j = 0; j < value[0].length; j++)
-				value[i][j] = inStream.readDouble();
-
 		closeInput();
 
 		return value;
@@ -283,16 +305,105 @@ public class ArrayCache {
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
 		closeOut();
 		openInput();
-		
-		double[] value = new double[size];
-		for (int i = 0; i < size; i++) {
-		
-			value[i] = inStream.readFloat();
+
+		double[] value ;
+		if(isNaNFiltered)
+			value= new double[size-nanNumber];
+		else
+			value= new double[size];
+		for (int i = 0, j=0; i < size; i++) {
+
+			float x = inStream.readFloat();
+
+			if(isNaNFiltered && Double.isNaN(x))
+				continue;
+			if(isNaN2Zero && Double.isNaN(x))
+				x=(float) 0.0;
+			value[j++] =  x;
 		}
 		closeInput();
 
 		return value;
 	}
+
+
+	public float[] getDoubleAsFloatArray() throws IOException {
+
+		if (type != ArrayCacheType.DOUBLE_VECTOR)
+			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
+		closeOut();
+		openInput();
+
+
+
+		float[] value ;
+		if(isNaNFiltered)
+			value= new float[size-nanNumber];
+		else
+			value= new float[size];
+		for (int i = 0, j=0; i < size; i++){
+
+			float x = (float) inStream.readDouble();
+
+			if(isNaNFiltered && Double.isNaN(x))
+				continue;
+			if(isNaN2Zero && Double.isNaN(x) )
+				x=(float) 0.0;
+			value[j++] =  x;
+
+		}
+
+		closeInput();
+
+		return value;
+	}
+
+
+
+	public String[] getStringArray() throws IOException{
+		closeOut();
+		openInput();
+		if (type != ArrayCacheType.STRING_VECTOR)
+			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
+
+		String[] value = new String[size];
+
+		java.util.Scanner scanner = new java.util.Scanner(inStream).useDelimiter("#-#");
+
+		for (int i = 0; i < size; i++) {
+
+			value[i] = scanner.next();
+		}
+		closeInput();
+
+		return value;
+	}
+
+
+	public double[][] getDoubleMatrix() throws IOException  {
+		closeOut();
+		openInput();
+
+
+		if ( type != ArrayCacheType.DOUBLE_MATRIX )
+			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
+		if (dimensions.length != 1) {
+			throw new RuntimeException(MessageStrings.WRONG_RESULT_FORMAT);
+		}
+
+		double[][] value = new double[size / dimensions[0]][dimensions[0]];
+
+		for (int i = 0; i < value.length; i++)
+			for (int j = 0; j < value[0].length; j++){
+
+				value[i][j] = inStream.readDouble();
+			}
+
+		closeInput();
+
+		return value;
+	}
+
 
 	public int[] getIntArray() throws IOException {
 		if (type != ArrayCacheType.INT_VECTOR)
@@ -325,26 +436,60 @@ public class ArrayCache {
 		return value;
 	}
 
-	public float[] getDoubleAsFloatArray() throws IOException {
+	public long[] getLongArray(ArrayCache valuesCache) throws IOException {
 
-		if (type != ArrayCacheType.DOUBLE_VECTOR)
+
+		if (type != ArrayCacheType.LONG_VECTOR)
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
+		if(valuesCache.type!=ArrayCacheType.DOUBLE_VECTOR && valuesCache.type!=ArrayCacheType.FLOAT_VECTOR){
+			closeOut();
+			openInput();
+
+			long[] value = new long[size];
+			for (int i = 0; i < size; i++)
+				value[i] = inStream.readLong();
+
+			closeInput();
+
+			return value;
+		}
 		closeOut();
 		openInput();
 
-		float[] value = new float[size];
-		for (int i = 0; i < size; i++)
-			value[i] = (float) inStream.readDouble();
+		valuesCache.openInput();
+		long[] value;// = new double[size];
+		if(valuesCache.isNaNFiltered)
+			value= new long[size-valuesCache.nanNumber];
+		else
+			value= new long[size];
 
+		for (int i = 0, j=0; i < size; i++) {
+			long t=inStream.readLong();
+			double x = valuesCache.inStream.readDouble(); 
+			if(valuesCache.isNaNFiltered && Double.isNaN(x))
+				continue;
+
+			value[j++] =  t;
+		}
 		closeInput();
+		valuesCache.closeInput();
+
+
+
+
 
 		return value;
+
+
+
 	}
 
 	public long[] getLongArray() throws IOException {
 
+
 		if (type != ArrayCacheType.LONG_VECTOR)
 			throw new RuntimeException(String.format(MessageStrings.WRONG_DATA_TYPE,  type));
+
 		closeOut();
 		openInput();
 
@@ -355,7 +500,11 @@ public class ArrayCache {
 		closeInput();
 
 		return value;
+
+
+
 	}
+
 
 	public float[] getFloatArray() throws IOException{
 
@@ -367,9 +516,19 @@ public class ArrayCache {
 		closeOut();
 		openInput();
 
-		float[] value = new float[size];
-		for (int i = 0; i < size; i++)
-			value[i] = inStream.readFloat();
+		float[] value;
+		if(isNaNFiltered)
+			value= new float[size-nanNumber];
+		else
+			value= new float[size];
+		for (int i = 0, j=0; i < size; i++) {
+			float x=inStream.readFloat();
+			if(isNaNFiltered && Double.isNaN(x))
+				continue;
+			if(isNaN2Zero)
+				x=(float)0.0;
+			value[j++] =  x;
+		}
 
 		closeInput();
 
@@ -390,6 +549,8 @@ public class ArrayCache {
 		while (len < value.size) {
 			for (int k = 0; k < batchSize; k++) {
 				double x = value.inStream.readDouble();
+				if(Double.isNaN(x))
+					batchValue[k].nanNumber++;
 				batchValue[k].isAllZero = batchValue[k].isAllZero && x == 0.0;
 				batchValue[k].outStream.writeDouble(x);
 				batchValue[k].size++;
@@ -428,6 +589,8 @@ public class ArrayCache {
 					double x = value.inStream.readDouble();
 
 					batchValue[k].isAllZero = batchValue[k].isAllZero && x == 0.0;
+					if(Double.isNaN(x))
+						batchValue[k].nanNumber++;
 					batchValue[k].outStream.writeDouble(x);
 					batchValue[k].size++;
 					len++;
@@ -518,14 +681,43 @@ public class ArrayCache {
 	public void setDimensions(int[] dimensions) {
 		if (dimensions != null)
 			this.dimensions = dimensions;
-		
+
 		if(dimensions.length == 1 && dimensions[0]>1)
 			type =ArrayCacheType.DOUBLE_MATRIX;
-			
+
 	}
 
 	public boolean isAllZero() {
 		return isAllZero;
 	}
+
+	public boolean isNaNFiltered() {
+		return isNaNFiltered;
+	}
+
+	public void setNaNFiltered(boolean isNaNFiltered) {
+		this.isNaNFiltered = isNaNFiltered;
+	}
+
+	public boolean isNaN2Zero() {
+		return isNaN2Zero;
+	}
+
+	public void setNaN2Zero(boolean isNaN2Zero) {
+		this.isNaN2Zero = isNaN2Zero;
+	}
+
+
+
+	public ArrayCacheType getType() {
+		return type;
+	}
+
+	public int getNanNumber() {
+		return nanNumber;
+	}
+
+
+
 
 }

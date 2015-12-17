@@ -82,7 +82,7 @@ public class ArrayUtil {
 		Adler32 adler32 = new Adler32();
 		adler32.update(truncated);
 		long checkSum =adler32.getValue();
-		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+		ByteBuffer buffer = ByteBuffer.allocate(Long.SIZE / Byte.SIZE);
 		byte[] checkSumBuf  =buffer.putLong(checkSum).array();
 		
 		checkSumExt[truncated.length] = checkSumBuf[0];
@@ -111,7 +111,7 @@ public class ArrayUtil {
 		checkSumBuf[7] = bytesArray[bytesArray.length-1];
 		
 		
-		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+		ByteBuffer buffer = ByteBuffer.allocate(Long.SIZE / Byte.SIZE);
 	    buffer.put(checkSumBuf);
 	    buffer.flip();//need flip 
 	    long checkSum = buffer.getLong();

@@ -22,26 +22,49 @@
  */
 package com.portfolioeffect.quant.client.test;
 
+import static org.junit.Assert.*;
 import static com.portfolioeffect.quant.client.portfolio.PortfolioUtil.*;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 import org.apache.log4j.Logger;
+import org.junit.Before;
 import org.junit.Test;
 
+import com.portfolioeffect.quant.client.model.ComputeErrorException;
 import com.portfolioeffect.quant.client.model.TimeValue;
 import com.portfolioeffect.quant.client.portfolio.Portfolio;
 import com.portfolioeffect.quant.client.portfolio.optimizer.PortfolioOptimizer;
 
 public class PortfolioOptimizationTest {
 	
-	private Logger logger = Logger.getLogger(this.getClass());
+	protected Logger logger = Logger.getLogger(this.getClass());
 	
-	private final String userName = "oleg4test";
-	private final String password = "oleg4testabirval";
-	private final String APIKey = "08ed15919960bed1085c825da1a670fc";
+	private String userName;
+	private String password;
+	private String APIKey;
+
+	@Before
+	public void setCredentials() throws IOException {
+
+		String resourceName = "credentials.properties";
+		ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		Properties props = new Properties();
+		InputStream resourceStream = loader.getResourceAsStream(resourceName);
+		props.load(resourceStream);
+
+		userName = props.getProperty("userName");
+		password = props.getProperty("password");
+		APIKey = props.getProperty("apiKey");
+
+	}
+
 
 	@Test
 	public void testStaticOptimization() throws Exception {
-		logger.info("Static optimization:");
+		logger.info("\n\nStatic optimization:");
 		util_setCredentials(userName, password, APIKey);
 
 		Portfolio portfolio = portfolio_create("t-1", "t-1", "SPY");
@@ -76,7 +99,7 @@ public class PortfolioOptimizationTest {
 
 	@Test
 	public void testStrategyOptimization() throws Exception {
-		logger.info("Strategy optimization:");
+		logger.info("\n\nStrategy optimization:");
 		util_setCredentials(userName, password, APIKey);
 
 		Portfolio portfolio = portfolio_create("t-1", "t-1", "SPY");

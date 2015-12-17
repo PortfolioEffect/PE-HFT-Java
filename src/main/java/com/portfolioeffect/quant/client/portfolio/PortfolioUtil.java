@@ -33,9 +33,31 @@ import com.portfolioeffect.quant.client.portfolio.optimizer.PortfolioOptimizer;
 import com.portfolioeffect.quant.client.portfolio.optimizer.StrategyOptimizer;
 import com.portfolioeffect.quant.client.result.MethodResult;
 import com.portfolioeffect.quant.client.type.MetricsType;
+import com.portfolioeffect.quant.client.util.DateTimeUtil;
 import com.portfolioeffect.quant.client.util.MetricStringBuilder;
 
 public class PortfolioUtil {
+	
+	private static boolean isNaNFiltered=true;
+	
+	public static boolean isNaNFiltered() {
+		return isNaNFiltered;
+	}
+
+	public static void setNaNFiltered(boolean isNaNFiltered) {
+		PortfolioUtil.isNaNFiltered = isNaNFiltered;
+	}
+
+	public static boolean isNaN2Zero() {
+		return isNaN2Zero;
+	}
+
+	public static void setNaN2Zero(boolean isNaN2Zero) {
+		PortfolioUtil.isNaN2Zero = isNaN2Zero;
+	}
+
+	private static boolean isNaN2Zero=false;
+
 
 	private static ClientConnection client = new ClientConnection();
 
@@ -52,6 +74,21 @@ public class PortfolioUtil {
 		client.setHost(hostName);
 
 	}
+	public static void util_setCredentials(ClientConnection client, String userName, String password, String apiKey, String hostName) {
+
+		client.stop();
+		client.setUsername(userName);
+		client.setPassword(password);
+		client.setApiKey(apiKey);
+		client.setHost(hostName);
+
+	}
+
+	public static void util_setCredentials(ClientConnection clientA) {
+
+		client = clientA;
+
+	}
 
 	public static Portfolio portfolio_create(String fromTime, String toTime, String indexSymbol) throws ComputeErrorException {
 		Portfolio portfolio = new Portfolio(client);
@@ -62,11 +99,30 @@ public class PortfolioUtil {
 
 		return portfolio;
 	}
+	
+	public static Portfolio portfolio_create(ClientConnection client, String fromTime, String toTime, String indexSymbol) throws ComputeErrorException {
+		Portfolio portfolio = new Portfolio(client);
+
+		checkResult(portfolio.setFromTime(fromTime));
+		checkResult(portfolio.setToTime(toTime));
+		checkResult(portfolio.addIndex(indexSymbol));
+
+		return portfolio;
+	}
+
 
 	public static Portfolio portfolio_create(double indexPrice[], long indexTimeMillisec[]) throws ComputeErrorException {
 		Portfolio portfolio = new Portfolio(client);
 
 		checkResult(portfolio.addIndex(indexPrice, indexTimeMillisec));
+
+		return portfolio;
+	}
+
+	public static Portfolio portfolio_create(double indexPrice[], String indexDateTime[]) throws ComputeErrorException {
+		Portfolio portfolio = new Portfolio(client);
+
+		checkResult(portfolio.addIndex(indexPrice, DateTimeUtil.toPOSIXTime(indexDateTime)));
 
 		return portfolio;
 	}
@@ -83,6 +139,12 @@ public class PortfolioUtil {
 
 	}
 
+	public static void portfolio_addPosition(Portfolio portfolio, String assetName, int[] quantity, String[] qunatityDataTime) throws ComputeErrorException {
+
+		checkResult(portfolio.addPosition(assetName, quantity, DateTimeUtil.toPOSIXTime(qunatityDataTime)));
+
+	}
+
 	public static void portfolio_addPosition(Portfolio portfolio, String assetName, int quantity, double[] price, long[] priceTimeMillisec)
 			throws ComputeErrorException {
 
@@ -90,10 +152,24 @@ public class PortfolioUtil {
 
 	}
 
+	public static void portfolio_addPosition(Portfolio portfolio, String assetName, int quantity, double[] price, String[] priceDataTime)
+			throws ComputeErrorException {
+
+		checkResult(portfolio.addPosition(assetName, price, quantity, DateTimeUtil.toPOSIXTime(priceDataTime)));
+
+	}
+
 	public static void portfolio_addPosition(Portfolio portfolio, String assetName, int[] quantity, long[] qunatityTimeMilliSec, double[] price,
 			long[] priceTimeMillisec) throws ComputeErrorException {
 
 		checkResult(portfolio.addPosition(assetName, price, priceTimeMillisec, quantity, qunatityTimeMilliSec));
+
+	}
+
+	public static void portfolio_addPosition(Portfolio portfolio, String assetName, int[] quantity, String[] qunatityDataTime, double[] price,
+			String[] priceDataTime) throws ComputeErrorException {
+
+		checkResult(portfolio.addPosition(assetName, price, DateTimeUtil.toPOSIXTime(priceDataTime), quantity, DateTimeUtil.toPOSIXTime(qunatityDataTime)));
 
 	}
 
@@ -107,14 +183,22 @@ public class PortfolioUtil {
 
 	}
 
+	public static void position_setQuantity(Portfolio portfolio, String symbol, int[] quantity, String[] dataTime) throws ComputeErrorException {
+
+	}
+
 	public static TimeValue position_variance(Portfolio portfolio, String symbol) throws ComputeErrorException {
 
 		MetricStringBuilder metricBuilder = new MetricStringBuilder();
 		metricBuilder.setMetric(MetricsType.POSITION_VARIANCE).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -126,8 +210,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_HURST_EXPONENT);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -138,8 +226,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_HURST_EXPONENT).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -150,8 +242,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_FRACTAL_DIMENSION);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -162,8 +258,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_FRACTAL_DIMENSION).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -174,8 +274,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_RETURN_AUTOCOVARIANCE).setLag(lag);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -186,8 +290,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_RETURN_AUTOCOVARIANCE).setPosition(symbol).setLag(lag);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -198,8 +306,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_SORTINO_RATIO).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 	}
@@ -210,8 +322,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_GAIN_LOSS_VARIANCE_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -222,8 +338,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_UPSIDE_DOWNSIDE_VARIANCE_RATIO).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -234,8 +354,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_OMEGA_RATIO).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -246,8 +370,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_RACHEV_RATIO).setConfidenceIntervalAlphaBeta(confidenceIntervalA, confidenceIntervalB);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -258,8 +386,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_VAR).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -270,8 +402,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_CVAR).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -282,8 +418,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_MAX_DRAWDOWN);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -294,8 +434,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_DRAWDOWN);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -306,8 +450,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_DOWN_CAPTURE_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -318,8 +466,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_UP_CAPTURE_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -330,8 +482,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_DOWN_NUMBER_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -343,8 +499,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_UP_NUMBER_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -355,8 +515,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_DOWN_PERCENTAGE_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -367,8 +531,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_UP_PERCENTAGE_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -379,8 +547,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_CALMAR_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -391,8 +563,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_VALUE);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -403,8 +579,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_RETURN);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -415,8 +595,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_EXPECTED_RETURN);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -427,8 +611,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_PROFIT);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -439,8 +627,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_TRANSACTION_COSTS_SIZE);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -451,8 +643,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_BETA);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -463,8 +659,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_ALPHA_JENSEN);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -475,8 +675,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_ALPHA);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -487,8 +691,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_VARIANCE);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -499,8 +707,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_SKEWNESS);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -511,8 +723,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_KURTOSIS);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -542,8 +758,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(metric);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -572,8 +792,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(metric);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -584,8 +808,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_SHARPE_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -596,8 +824,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_INFORMATION_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -608,8 +840,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_WEIGHT).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -620,8 +856,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_SHARPE_RATIO_MOD).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -632,8 +872,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_STARR_RATIO).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -644,8 +888,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_TREYNOR_RATIO);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -656,8 +904,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_GAIN_VARIANCE);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -668,8 +920,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_LOSS_VARIANCE);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -680,8 +936,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_GAIN_VARIANCE).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -692,8 +952,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_LOSS_VARIANCE).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -704,8 +968,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_DOWNSIDE_VARIANCE).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -716,8 +984,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_UPSIDE_VARIANCE).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -728,8 +1000,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_DOWNSIDE_VARIANCE).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -740,8 +1016,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_UPSIDE_VARIANCE).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -752,8 +1032,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_EXPECTED_UPSIDE_THRESHOLD_RETURN).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -764,8 +1048,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.PORTFOLIO_EXPECTED_DOWNSIDE_THRESHOLD_RETURN).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -776,21 +1064,28 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_EXPECTED_UPSIDE_THRESHOLD_RETURN).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
 	}
 
-	public static TimeValue position_expectedDownsideThresholdReturn(Portfolio portfolio, String symbol, double thresholdReturn)
-			throws ComputeErrorException {
+	public static TimeValue position_expectedDownsideThresholdReturn(Portfolio portfolio, String symbol, double thresholdReturn) throws ComputeErrorException {
 		MetricStringBuilder metricBuilder = new MetricStringBuilder();
 		metricBuilder.setMetric(MetricsType.POSITION_EXPECTED_DOWNSIDE_THRESHOLD_RETURN).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -801,8 +1096,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_GAIN_LOSS_VARIANCE_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -813,8 +1112,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_UPSIDE_DOWNSIDE_VARIANCE_RATIO).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -826,8 +1129,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_RACHEV_RATIO).setPosition(symbol).setConfidenceIntervalAlphaBeta(confidenceIntervalA, confidenceIntervalB);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -838,8 +1145,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_VAR).setPosition(symbol).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -850,8 +1161,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_CVAR).setPosition(symbol).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -862,8 +1177,13 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_SORTINO_RATIO).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
+		
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -874,8 +1194,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_OMEGA_RATIO).setPosition(symbol).setThresholdReturn(thresholdReturn);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -886,8 +1210,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_INFORMATION_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -898,8 +1226,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_SHARPE_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -910,8 +1242,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_SHARPE_RATIO_MOD).setPosition(symbol).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -922,8 +1258,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_STARR_RATIO).setPosition(symbol).setConfidenceInterval(confidenceInterval);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -934,8 +1274,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_TREYNOR_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -946,8 +1290,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_CALMAR_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -958,8 +1306,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_PROFIT).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -970,8 +1322,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_TRANSACTION_COSTS_SIZE).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -982,8 +1338,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_COVARIANCE).setPositionA(symbol1).setPositionB(symbol2);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -994,8 +1354,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_CORRELATION).setPositionA(symbol1).setPositionB(symbol2);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1006,8 +1370,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_DOWN_CAPTURE_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1018,8 +1386,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_UP_CAPTURE_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1030,8 +1402,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_DOWN_PERCENTAGE_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1042,8 +1418,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_UP_PERCENTAGE_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1054,8 +1434,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_DOWN_NUMBER_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1066,8 +1450,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_UP_NUMBER_RATIO).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1078,8 +1466,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_MAX_DRAWDOWN).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1090,8 +1482,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_DRAWDOWN).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1102,8 +1498,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_RETURN).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1114,8 +1514,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_PRICE).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1126,8 +1530,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_QUANTITY).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1138,8 +1546,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_VALUE).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1150,8 +1562,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_EXPECTED_RETURN).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1162,8 +1578,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_SKEWNESS).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1174,8 +1594,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_KURTOSIS).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1204,8 +1628,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(metric).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1234,8 +1662,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(metric).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1246,8 +1678,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_ALPHA).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1258,8 +1694,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_ALPHA_JENSEN).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1270,8 +1710,12 @@ public class PortfolioUtil {
 		metricBuilder.setMetric(MetricsType.POSITION_BETA).setPosition(symbol);
 
 		MethodResult result = portfolio.getMetric(metricBuilder.getJSON());
+		result.setNaNFiltered(isNaNFiltered);
+		result.setNaN2Zero(isNaN2Zero);
 
 		checkResult(result);
+		if (!result.isHasResult())
+			return new TimeValue(new double[0], new long[0]);
 
 		return new TimeValue(result.getDoubleArray("value"), result.getLongArray("time"));
 
@@ -1312,54 +1756,84 @@ public class PortfolioUtil {
 	 * @param key
 	 * @param value
 	 * 
-	 *          <p>  key = "portfolioMetricsMode" -> value = "price","portfolio"  </p>
-	 *            
-	 *           <p> key = "windowLength" -> value = "Xs" X -seconds; "Xm" X
+	 *            <p>
+	 *            key = "portfolioMetricsMode" -> value = "price","portfolio"
+	 *            </p>
+	 * 
+	 *            <p>
+	 *            key = "windowLength" -> value = "Xs" X -seconds; "Xm" X
 	 *            -minutes; "Xh" X - hours; "Xd" X -days; "Xw" X -weeks; "Xmo" X
 	 *            - months; "Xy" X - years; * "all" - cumulative value without
-	 *            window </p>
+	 *            window
+	 *            </p>
 	 * 
-	 *          <p>  key = "holdingPeriodsOnly" -> value="true", "false" </p>
+	 *            <p>
+	 *            key = "holdingPeriodsOnly" -> value="true", "false"
+	 *            </p>
 	 * 
-	 *           <p> key = "shortSalesMode" -> value = "lintner" or "markowitz" </p>
+	 *            <p>
+	 *            key = "shortSalesMode" -> value = "lintner" or "markowitz"
+	 *            </p>
 	 * 
-	 *           <p> key = jumpsModel -> value "moments" - filtering jumps happens
+	 *            <p>
+	 *            key = jumpsModel -> value "moments" - filtering jumps happens
 	 *            only in the calculation of moments and related metrics, "none"
 	 *            jumps is not filtering, "all" filtering jumps happens for all
-	 *            metrics including price as metrics</p>
+	 *            metrics including price as metrics
+	 *            </p>
 	 * 
-	 *           <p> key = "noiseModel" -> value="true", "false" </p>
+	 *            <p>
+	 *            key = "noiseModel" -> value="true", "false"
+	 *            </p>
 	 * 
-	 *           <p> key = "factorModel" -> "sim" for single index model or
-	 *            "direct" for direct model</p>
+	 *            <p>
+	 *            key = "factorModel" -> "sim" for single index model or
+	 *            "direct" for direct model
+	 *            </p>
 	 * 
-	 *           <p> key = "densityModel" -> "GLD" -generalized lambda
+	 *            <p>
+	 *            key = "densityModel" -> "GLD" -generalized lambda
 	 *            distribution, "CORNISH_FISHER" - Cornish Fisher expansion,
-	 *            "NORMAL" - normal distribution </p>
+	 *            "NORMAL" - normal distribution
+	 *            </p>
 	 * 
-	 *           <p> key = "resultsSamplingInterval" -> value = "all" or - with out
+	 *            <p>
+	 *            key = "resultsSamplingInterval" -> value = "all" or - with out
 	 *            sampling ; "Xs" X -seconds; "Xm" X -minutes; "Xh" X - hours;
 	 *            "Xd" X -days; "Xw" X -weeks; "Xmo" X - months; "Xy" X - years;
-	 *            "last" - only final result </p>
+	 *            "last" - only final result
+	 *            </p>
 	 * 
-	 *           <p> key = "driftTerm" -> value="true", "false" </p>
+	 *            <p>
+	 *            key = "driftTerm" -> value="true", "false"
+	 *            </p>
 	 * 
-	 *           <p> key = "inputSamplingInterval" -> value = "all" or - with out
+	 *            <p>
+	 *            key = "inputSamplingInterval" -> value = "all" or - with out
 	 *            sampling ; "Xs" X -seconds; "Xm" X -minutes; "Xh" X - hours;
 	 *            "Xd" X -days; "Xw" X -weeks; "Xmo" X - months; "Xy" X - years;
-	 *            "last" - only final result</p>
+	 *            "last" - only final result
+	 *            </p>
 	 * 
-	 *          <p>  key = "timeScale" -> value = "Xs" X -seconds; "Xm" X -minutes;
+	 *            <p>
+	 *            key = "timeScale" -> value = "Xs" X -seconds; "Xm" X -minutes;
 	 *            "Xh" X - hours; "Xd" X -days; "Xw" X -weeks; "Xmo" X - months;
-	 *            "Xy" X - years;</p>
+	 *            "Xy" X - years;
+	 *            </p>
 	 * 
 	 * 
-	 *           <p> key = "txnCostPerShare" -> value="number"</p>
+	 *            <p>
+	 *            key = "txnCostPerShare" -> value="number"
+	 *            </p>
 	 * 
-	 *           <p> key = "txnCostFixed" -> value="number"</p>
-	 *           
-	 *           <p> key = "isFractalPriceModelEnabled" -> value="true" or false</p>
-	 *           
+	 *            <p>
+	 *            key = "txnCostFixed" -> value="number"
+	 *            </p>
+	 * 
+	 *            <p>
+	 *            key = "isFractalPriceModelEnabled" -> value="true" or false
+	 *            </p>
+	 * 
 	 * @throws ComputeErrorException
 	 * 
 	 */
@@ -1394,12 +1868,11 @@ public class PortfolioUtil {
 			portfolio.setNoiseModelEnabled(Boolean.valueOf(value));
 			return;
 		}
-		
+
 		if (key.equals("isFractalPriceModelEnabled")) {
-			portfolio.setNoiseModelEnabled(Boolean.valueOf(value));
+			portfolio.setFractalPriceModelEnabled(Boolean.valueOf(value));
 			return;
 		}
-		
 
 		if (key.equals("factorModel")) {
 			portfolio.setFactorModel(value);
@@ -1445,12 +1918,56 @@ public class PortfolioUtil {
 
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastType
+	 *            = "exp_smoothing" or "simple"
+	 * @param forecastExponentialWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param errorInDecimalPoints
+	 *            = for example 1e-6 or 1e-9 or ...
+	 * @param globalOptimumProbability
+	 *            = for example 0.8 or 0.99 or ....
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, String forecastPortfolioWindow,
 			String forecastTimeStep, String forecastType, String forecastExponentialWindow, double errorInDecimalPoints, double globalOptimumProbability) {
 		return optimization_goal(portfolio, goal, direction, 0.95, forecastPortfolioWindow, forecastTimeStep, forecastType, forecastExponentialWindow,
 				errorInDecimalPoints, globalOptimumProbability);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastType
+	 *            = "exp_smoothing" or "simple"
+	 * @param forecastExponentialWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, String forecastPortfolioWindow,
 			String forecastTimeStep, String forecastType, String forecastExponentialWindow) {
 
@@ -1459,28 +1976,110 @@ public class PortfolioUtil {
 
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastType
+	 *            = "exp_smoothing" or "simple"
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, String forecastPortfolioWindow,
 			String forecastTimeStep, String forecastType) {
 
 		return optimization_goal(portfolio, goal, direction, 0.95, forecastPortfolioWindow, forecastTimeStep, forecastType, "5m", 1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, String forecastPortfolioWindow,
 			String forecastTimeStep) {
 
 		return optimization_goal(portfolio, goal, direction, 0.95, forecastPortfolioWindow, forecastTimeStep, "exp_smoothing", "5m", 1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, String forecastPortfolioWindow) {
 
 		return optimization_goal(portfolio, goal, direction, 0.95, forecastPortfolioWindow, forecastPortfolioWindow, "exp_smoothing", "5m", 1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction) {
 
 		return optimization_goal(portfolio, goal, direction, 0.95, "1m", "1m", "exp_smoothing", "5m", 1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param confidenceInterval
+	 *            = for example 0.95
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastType
+	 *            = "exp_smoothing" or "simple"
+	 * @param forecastExponentialWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, double confidenceInterval,
 			String forecastPortfolioWindow, String forecastTimeStep, String forecastType, String forecastExponentialWindow) {
 
@@ -1489,18 +2088,72 @@ public class PortfolioUtil {
 
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param confidenceInterval
+	 *            = for example 0.95
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastType
+	 *            = "exp_smoothing" or "simple"
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, double confidenceInterval,
 			String forecastPortfolioWindow, String forecastTimeStep, String forecastType) {
 
 		return optimization_goal(portfolio, goal, direction, confidenceInterval, forecastPortfolioWindow, forecastTimeStep, forecastType, "5m", 1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param confidenceInterval
+	 *            = for example 0.95
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, double confidenceInterval,
 			String forecastPortfolioWindow, String forecastTimeStep) {
 
 		return optimization_goal(portfolio, goal, direction, confidenceInterval, forecastPortfolioWindow, forecastTimeStep, "exp_smoothing", "5m", 1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param confidenceInterval
+	 *            = for example 0.95
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, double confidenceInterval,
 			String forecastPortfolioWindow) {
 
@@ -1508,6 +2161,20 @@ public class PortfolioUtil {
 				1e-12, 0.99);
 	}
 
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param confidenceInterval
+	 *            = for example 0.95
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, double confidenceInterval) {
 
 		return optimization_goal(portfolio, goal, direction, confidenceInterval, "1m", "1m", "exp_smoothing", "5m", 1e-12, 0.99);
@@ -1524,7 +2191,32 @@ public class PortfolioUtil {
 	//
 	//
 	// }
-
+	/**
+	 * 
+	 * @param portfolio
+	 *            -- no comments
+	 * @param goal
+	 *            = "Variance", "VaR", "CVaR", "ExpectedReturn", "Return",
+	 *            "SharpeRatio", "ModifiedSharpeRatio", "StarrRatio",
+	 *            "ContraintsOnly", "EquiWeight"
+	 * @param direction
+	 *            = "minimize" or "maximize"
+	 * @param confidenceInterval
+	 *            = for example 0.95
+	 * @param forecastPortfolioWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastTimeStep
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param forecastType
+	 *            = "exp_smoothing" or "simple"
+	 * @param forecastExponentialWindow
+	 *            = for example "10s" or "1m" or "1h" or ...
+	 * @param errorInDecimalPoints
+	 *            = for example 1e-6 or 1e-9 or ...
+	 * @param globalOptimumProbability
+	 *            = for example 0.8 or 0.99 or ....
+	 * @return
+	 */
 	public static PortfolioOptimizer optimization_goal(Portfolio portfolio, String goal, String direction, double confidenceInterval,
 			String forecastPortfolioWindow, String forecastTimeStep, String forecastType, String forecastExponentialWindow, double errorInDecimalPoints,
 			double globalOptimumProbability) {
@@ -1815,6 +2507,7 @@ public class PortfolioUtil {
 	public static int util_getComputeTime(String time) throws ComputeErrorException {
 
 		MethodResult result = client.getComputeTimeLeft();
+
 		checkResult(result);
 
 		if (time.equals("timeMax"))

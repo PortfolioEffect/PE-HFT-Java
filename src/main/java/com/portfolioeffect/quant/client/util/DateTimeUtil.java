@@ -75,6 +75,16 @@ public class DateTimeUtil {
 		return POSIXTimeToDateInt(new long [] {timesMills}, formatStr);
 	}
 	
+	public static double[] testNAVector() {
+		double [] naVector = new double[23400];
+		
+		for(int i = 0; i< naVector.length; i++) {
+			naVector[i] = Double.NaN;
+		}
+		return naVector;
+	}
+	
+	
 	public static int[] POSIXTimeToDateInt(long [] timesMills, String formatStr) {
 		int field = -1;
 		if(formatStr.equals("yyyy")) {

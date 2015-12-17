@@ -509,7 +509,8 @@ public class ClientConnection  {
 		}
 
 		MethodResult result = new MethodResult();
-		result.setStringArray("positions", paramList);
+		ArrayCache pL = new ArrayCache(paramList);
+		result.setData("positions", pL);
 		return result;
 	}
 
@@ -1156,9 +1157,14 @@ public class ClientConnection  {
 
 			data = Snappy.uncompress(data, 0, data.length);
 			Map<String, String[]> map = (Map<String, String[]>) SerializationUtils.deserialize(data);
-			result.setStringArray("id", map.get("id"));
-			result.setStringArray("description", map.get("description"));
-			result.setStringArray("exchange", map.get("exchange"));
+			
+			ArrayCache id = new ArrayCache(map.get("id"));
+			ArrayCache description = new ArrayCache(map.get("description"));
+			ArrayCache exchange = new ArrayCache(map.get("exchange"));
+			
+			result.setData("id", id);
+			result.setData("description", description);
+			result.setData("exchange", exchange);
 
 		} else {
 

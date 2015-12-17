@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.portfolioeffect.quant.client.ClientConnection;
@@ -45,7 +47,7 @@ import com.portfolioeffect.quant.client.util.MessageStrings;
 public class Portfolio {
 
 	private static final int MAX_PDF_POINTS = 300;
-	private static final int NUMBER_OF_TRIES = 10;
+	private static final int NUMBER_OF_TRIES = 20;
 	private boolean isDebug = false;
 	private PortfolioData portfolioData = new PortfolioData();
 
@@ -1068,8 +1070,8 @@ public class Portfolio {
 				MethodResult resultTransmit = transmitData(dataList);
 
 				if (resultTransmit.hasError()) {
-					clientConnection.resetProgressBar();
-					return new MethodResult(resultTransmit.getErrorMessage());
+					throw new Exception(resultTransmit.getErrorMessage());
+				//	return new MethodResult(resultTransmit.getErrorMessage());
 				}
 
 				if (isDebug) {
@@ -1096,7 +1098,7 @@ public class Portfolio {
 			} catch (Exception e) {
 
 				MethodResult result = processException(e);
-				if (result == null)
+				if (result.getErrorMessage().equals("Server too busy, try again later") )
 					continue;
 				return result;
 
@@ -1111,14 +1113,39 @@ public class Portfolio {
 	public MethodResult getAllSymbolsList() {
 
 		for (int ii = 0; ii < NUMBER_OF_TRIES; ii++) {
-			try {
+			
+			CacheKey keyId = new CacheKey("[{name:\"allSymbolsId\"}]", "");
+			CacheKey keyDescription = new CacheKey("[{name:\"allSymbolsDescription\"}]", "");
+			CacheKey keyExchange = new CacheKey("[{name:\"allSymbolsExchange\"}]", "");
 
-				return clientConnection.getAllSymbolsList();
+			if (portfolioCache.containsKey(keyId)) {
+
+				MethodResult result = new MethodResult();
+
+				result.setData("id", portfolioCache.getMetric(keyId));
+				result.setData("description",portfolioCache.getMetric(keyDescription));
+				result.setData("exchange", portfolioCache.getMetric(keyExchange));
+                
+				
+
+				return result;
+			}
+
+			
+			try {
+				
+				MethodResult result = clientConnection.getAllSymbolsList(); 
+				
+				portfolioCache.addMetric(keyId, result.getDataArrayCache("id"));
+				portfolioCache.addMetric(keyDescription, result.getDataArrayCache("description"));
+				portfolioCache.addMetric(keyExchange, result.getDataArrayCache("exchange"));
+				
+				return result;
 
 			} catch (Exception e) {
 
 				MethodResult result = processException(e);
-				if (result == null)
+				if (result.getErrorMessage().equals("Server too busy, try again later") )
 					continue;
 				return result;
 
@@ -1192,7 +1219,8 @@ public class Portfolio {
 				return new MethodResult(isRestarted.getErrorMessage());
 			}
 
-			return null;
+			return new MethodResult("Server too busy, try again later");
+			
 		}
 		
 		if (e.getMessage() == null || e.getMessage().contains("No data in cache") || e.getMessage().contains("null")) {
@@ -1203,7 +1231,7 @@ public class Portfolio {
 				return new MethodResult(isRestarted.getErrorMessage());
 			}
 
-			return null;
+			return new MethodResult("Server too busy, try again later");
 
 		}
 
@@ -1348,7 +1376,8 @@ public class Portfolio {
 				MethodResult resultTransmit = transmitData(dataList);
 
 				if (resultTransmit.hasError()) {
-					return new MethodResult(resultTransmit.getErrorMessage());
+					throw new Exception(resultTransmit.getErrorMessage());
+					//return new MethodResult(resultTransmit.getErrorMessage());
 				}
 				if (isDebug) {
 
@@ -1380,7 +1409,7 @@ public class Portfolio {
 				return new MethodResult();
 			} catch (Exception e) {
 				MethodResult result = processException(e);
-				if (result == null)
+				if (result.getErrorMessage().equals("Server too busy, try again later") )
 					continue;
 				return result;
 			}
@@ -1979,6 +2008,7 @@ public class Portfolio {
 		return getParam("densityApproxModel");
 	}
     
+	
 	public void setPortfolioMetricsMode(String mode) {
 		setParam("portfolioMetricsMode", mode);
 	}
@@ -2002,5 +2032,44 @@ public class Portfolio {
 	public boolean  isFractalPriceModelEnabled(){
 		return Boolean.valueOf(getParam("isFractalPriceModelEnabled"));
 	}
+	
+	public MethodResult findSymbols(String searchStr, int numResults) throws IOException {
 
+		ArrayList<String> id = new ArrayList<String>();
+		ArrayList<String> description = new ArrayList<String>();
+		ArrayList<String> exchange = new ArrayList<String>();
+		
+		MethodResult allSymbols = getAllSymbolsList();
+		String[] idStrings = allSymbols.getStringArray("id");
+		String[] descriptionString = allSymbols.getStringArray("description");
+		String[] exchangeString = allSymbols.getStringArray("exchange");
+        
+		for(int i=0; i<idStrings.length;i++){
+			if(StringUtils.containsIgnoreCase(idStrings[i], searchStr) || 
+		               StringUtils.containsIgnoreCase(descriptionString[i], searchStr)) {
+		                id.add(idStrings[i]);
+		                description.add(descriptionString[i]);
+		                exchange.add(exchangeString[i]);
+		            }
+		    if(id.size() >= numResults) { 
+                break;
+            }
+		}
+		
+     
+		MethodResult result = new MethodResult();
+		
+		ArrayCache idCache =new ArrayCache( id.toArray(new String[0])  );
+		result.setData("id", idCache);
+		
+		ArrayCache descriptionCache =new ArrayCache(  description.toArray(new String[0]) );
+		result.setData("description", descriptionCache);
+		
+		ArrayCache exchangeCache =new ArrayCache( exchange.toArray(new String[0]) );
+		result.setData("exchange", exchangeCache);
+		
+		return result;
+	}
+    
+    
 }
