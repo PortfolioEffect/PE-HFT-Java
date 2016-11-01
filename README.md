@@ -32,8 +32,7 @@ Usage of this package with PortfolioEffect services shall be subject to the [Ter
 
 ## Copyright
 
-Copyright &copy; 2015 PortfolioEffect
+Copyright &copy; 2016 PortfolioEffect
 
 [PortfolioEffect Terms]: https://www.portfolioeffect.com/docs/terms
-[website]: https://www.portfolioeffect.com/registration
-[doc]: https://github.com/PortfolioEffect/PE-HFT-Java/doc/manual.pdf
+[doc]: https://github.com/PortfolioEffect/PE-HFT-Java/tree/master/doc/manual.pdf
