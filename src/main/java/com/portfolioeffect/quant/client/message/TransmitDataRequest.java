@@ -23,6 +23,7 @@
 package com.portfolioeffect.quant.client.message;
 
 
+import com.portfolioeffect.quant.client.exception.ClientException;
 import com.portfolioeffect.quant.client.message.util.ArrayUtil;
 
 
@@ -49,9 +50,9 @@ public class TransmitDataRequest extends AbstractMessage{
 		return dataInt;
 	}
 	
-	public int[] getDataInt() throws Exception {
+	public int[] getDataInt() throws ClientException  {
 		if(dataInt ==null)
-			throw new Exception("No such type data: dataInt");
+			throw new ClientException("No such type data: dataInt");
 		
 		return ArrayUtil.unpackAndDecompressInts(dataLength, dataInt);
 	}
@@ -60,10 +61,10 @@ public class TransmitDataRequest extends AbstractMessage{
 		return dataFloat;
 	}
 	
-	public float[] getDataFloat() throws Exception {
+	public float[] getDataFloat() throws ClientException {
 		
 		if(dataFloat ==null)
-			throw new Exception("No such type data: dataFloat");
+			throw new ClientException("No such type data: dataFloat");
 		return ArrayUtil.unpackAndDecompressFloats(dataLength, dataFloat);
 	}
 
@@ -72,9 +73,9 @@ public class TransmitDataRequest extends AbstractMessage{
 		return time;
 	}
 	
-	public long[] getTime() throws Exception {
+	public long[] getTime() throws ClientException {
 		if(time ==null)
-			throw new Exception("No such type data: time");
+			throw new ClientException("No such type data: time");
 		return ArrayUtil.unpackAndDecompressLongs(dataLength, time);
 	}
 

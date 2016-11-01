@@ -22,6 +22,10 @@
  */
 package com.portfolioeffect.quant.client.portfolio;
 
+import gnu.trove.list.array.TDoubleArrayList;
+import gnu.trove.list.array.TFloatArrayList;
+import gnu.trove.list.array.TLongArrayList;
+
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.sql.Timestamp;
@@ -37,7 +41,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.portfolioeffect.quant.client.ClientConnection;
 import com.portfolioeffect.quant.client.model.ConnectFailedException;
-import com.portfolioeffect.quant.client.result.MethodResult;
+import com.portfolioeffect.quant.client.result.Metric;
 import com.portfolioeffect.quant.client.util.Console;
 import com.portfolioeffect.quant.client.util.DateTimeUtil;
 import com.portfolioeffect.quant.client.util.MessageStrings;
@@ -147,7 +151,7 @@ public class Estimator {
 		return estimatorData.getSettingJSON();
 	}
 
-	public MethodResult addAsset(String assetName) {
+	public Metric addAsset(String assetName) {
 
 		if (estimatorData.getIndexPrice() != null) {
 
@@ -159,11 +163,15 @@ public class Estimator {
 		estimatorData.setIndexSymbol(assetName);
 		clearCache();
 
-		return new MethodResult();
+		return new Metric();
 
 	}
 
-	public MethodResult addAsset(double[] indexPrice, long timeStepMilliSec) {
+	public Metric addAsset(TDoubleArrayList indexPrice, long timeStepMilliSec) {
+		return  addAsset(indexPrice.toArray() ,  timeStepMilliSec);
+	}
+	
+	public Metric addAsset(double[] indexPrice, long timeStepMilliSec) {
 		long[] timeMilliSec = new long[indexPrice.length];
 
 		for (int i = 0; i < indexPrice.length; i++)
@@ -172,7 +180,11 @@ public class Estimator {
 		return addAsset(indexPrice, timeMilliSec);
 	}
 
-	public MethodResult addAsset(double[] price, long[] timeMilliSec) {
+	public Metric addAsset(TDoubleArrayList price, TLongArrayList timeMilliSec) {
+		return addAsset( price.toArray(),  timeMilliSec.toArray());
+	}
+	
+	public Metric addAsset(double[] price, long[] timeMilliSec) {
 
 		if (estimatorData.getIndexPrice() != null) {
 
@@ -181,14 +193,14 @@ public class Estimator {
 		}
 
 		if (price.length == 0) {
-			return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE);
+			return new Metric(MessageStrings.WRONG_VECTOR_LEN_PRICE);
 		}
 		if (timeMilliSec.length == 0) {
-			return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_TIME);
+			return new Metric(MessageStrings.WRONG_VECTOR_LEN_TIME);
 		}
 		
 		if(timeMilliSec.length!=price.length)
-			return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
+			return new Metric(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
 			
 
 		try {
@@ -205,10 +217,14 @@ public class Estimator {
 
 		clearCache();
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult addIndex(float[] indexPrice, long timeStepMilliSec) {
+	public Metric addIndex(TFloatArrayList indexPrice, long timeStepMilliSec) {
+		return  addIndex(indexPrice.toArray(), timeStepMilliSec);
+	}
+	
+	public Metric addIndex(float[] indexPrice, long timeStepMilliSec) {
 		long[] timeMilliSec = new long[indexPrice.length];
 
 		for (int i = 0; i < indexPrice.length; i++)
@@ -217,7 +233,11 @@ public class Estimator {
 		return addIndex(indexPrice, timeMilliSec);
 	}
 
-	public MethodResult addIndex(float[] price, long[] timeMilliSec) {
+	public Metric addIndex(TFloatArrayList price, TLongArrayList timeMilliSec) {
+		return addIndex( price.toArray(),  timeMilliSec.toArray());
+	}
+	
+	public Metric addIndex(float[] price, long[] timeMilliSec) {
 
 		if (estimatorData.getIndexPrice() != null) {
 
@@ -226,13 +246,13 @@ public class Estimator {
 		}
 
 		if (price.length == 0) {
-			return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE);
+			return new Metric(MessageStrings.WRONG_VECTOR_LEN_PRICE);
 		}
 		if (timeMilliSec.length == 0) {
-			return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_TIME);			
+			return new Metric(MessageStrings.WRONG_VECTOR_LEN_TIME);			
 		}
 		if(timeMilliSec.length!=price.length)
-			return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
+			return new Metric(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
 
 		try {
 			estimatorData.setIndexPrice(new ArrayCache(price));
@@ -248,7 +268,7 @@ public class Estimator {
 
 		clearCache();
 
-		return new MethodResult();
+		return new Metric();
 	}
 
 	public ClientConnection getClient() {
@@ -289,7 +309,7 @@ public class Estimator {
 			
 	}
 	
-	private MethodResult transmitData(ArrayList<String> dataList) throws Exception {
+	private Metric transmitData(ArrayList<String> dataList) throws Exception {
 
 		if (isDebug) {
 
@@ -300,8 +320,8 @@ public class Estimator {
 
 		String windowLength = getParam("windowLength");
 		String priceSamplingInterval = getParam("priceSamplingInterval");
-		MethodResult result = clientConnection.transmitDataList(estimatorData.getFromTime(), estimatorData.getToTime(), dataList, windowLength,
-				priceSamplingInterval,"PE");
+		Metric result = clientConnection.transmitDataList(estimatorData.getFromTime(), estimatorData.getToTime(), dataList, windowLength,
+				priceSamplingInterval,"PE","true");
 
 		if (result.hasError()){
 			processNoCashError(result.getErrorMessage());
@@ -309,7 +329,7 @@ public class Estimator {
 		}
 
 		if (result.getMessage().length() == 0)
-			return new MethodResult();
+			return new Metric();
 
 		Gson gson = new Gson();
 		Type mapType = new TypeToken<String[]>() {
@@ -321,7 +341,7 @@ public class Estimator {
 			String[] ePars = e.split("-");
 			if (ePars[0].equals("h") || ePars[0].equals("hI")) {
 
-				result = new MethodResult(MessageStrings.ERROR_HIST_PRICE);
+				result = new Metric(MessageStrings.ERROR_HIST_PRICE);
 
 				if (result.hasError()){
 					processNoCashError(result.getErrorMessage());
@@ -333,7 +353,7 @@ public class Estimator {
 				String position = ePars[1].split(":")[1];
 
 				if (position.equals("index")) {
-					result = clientConnection.transmitUserPrice(ePars[1], estimatorData.getIndexPrice().getFloatArray(), estimatorData.getIndexTimeMillisec()
+					result = clientConnection.transmitUserPrice(ePars[1], estimatorData.getIndexPrice().getDoubleAsFloatArray(), estimatorData.getIndexTimeMillisec()
 							.getLongArray());
 					if (result.hasError()){
 						processNoCashError(result.getErrorMessage());
@@ -341,20 +361,20 @@ public class Estimator {
 					}
 				} 
 			} else {
-				return new MethodResult(MessageStrings.ERROR_TRANSMIT);
+				return new Metric(MessageStrings.ERROR_TRANSMIT);
 			}
 
 		}
 
-		return new MethodResult();
+		return new Metric();
 
 	}
 
-	public MethodResult getMetric(String metricType) {
+	public Metric getMetric(String metricType) {
 
 		if (estimatorData.getFromTime().length() == 0 || estimatorData.getToTime().length() == 0) {
 			clientConnection.resetProgressBar();
-			return new MethodResult("Set time interval  first");
+			return new Metric("Set time interval  first");
 		}
 
 		for (int ii = 0; ii < NUMBER_OF_TRIES; ii++) {
@@ -366,7 +386,7 @@ public class Estimator {
 				
 				{
 
-					MethodResult result = clientConnection.validateStringRequest("[{no:\"no\"}]");
+					Metric result = clientConnection.validateStringRequest("[{no:\"no\"}]");
 					if (result.hasError())
 						throw new Exception(result.getErrorMessage());
 					
@@ -398,7 +418,7 @@ public class Estimator {
 				
 				if (estimatorCache.containsKey(key)) {
 
-					MethodResult result = new MethodResult();
+					Metric result = new Metric();
 
 					result.setData("value", estimatorCache.getMetric(key));
 					result.setData("time", estimatorCache.getTime(key));
@@ -407,7 +427,7 @@ public class Estimator {
 				}
 
 				clientConnection.printProgressBar(0);
-				MethodResult result = null;
+				Metric result = null;
 
 //				ArrayList<String> positionList = new ArrayList<String>();
 				//String indexPosition = "";
@@ -426,11 +446,11 @@ public class Estimator {
 //								+ "=" + estimatorData.getPortfolioId() + ":" + indexPosition + ":" + estimatorData.getQuantityID().get(indexPosition);
 //				}
 				
-				MethodResult resultTransmit = transmitData(dataList);
+				Metric resultTransmit = transmitData(dataList);
 
 				if (resultTransmit.hasError()) {
 					clientConnection.resetProgressBar();
-					return new MethodResult(resultTransmit.getErrorMessage());
+					return new Metric(resultTransmit.getErrorMessage());
 				}
 
 				if (isDebug) {
@@ -459,7 +479,7 @@ public class Estimator {
 
 			} catch (Exception e) {
 
-				MethodResult result = processException(e);
+				Metric result = processException(e);
 				if (result == null)
 					continue;
 				return result;
@@ -468,23 +488,23 @@ public class Estimator {
 
 		}
 		clientConnection.resetProgressBar();
-		return new MethodResult(MessageStrings.FAILED_SERVER_TIME_OUT);
+		return new Metric(MessageStrings.FAILED_SERVER_TIME_OUT);
 
 	}
 
 	
 	
-		private MethodResult processException(Exception e) {
+		private Metric processException(Exception e) {
 
 		if (isDebug)
 			Console.writeStackTrace(e);
 
 		if (e instanceof ConnectFailedException) {
 
-			MethodResult isRestarted = clientConnection.restart();
+			Metric isRestarted = clientConnection.restart();
 			if (isRestarted.hasError()) {
 				clientConnection.resetProgressBar();
-				return new MethodResult(isRestarted.getErrorMessage());
+				return new Metric(isRestarted.getErrorMessage());
 			}
 
 			return null;
@@ -492,10 +512,10 @@ public class Estimator {
 		
 		if (e.getMessage() == null || e.getMessage().contains("No data in cache") || e.getMessage().contains("null")) {
 
-			MethodResult isRestarted = clientConnection.restart();
+			Metric isRestarted = clientConnection.restart();
 			if (isRestarted.hasError()) {
 				clientConnection.resetProgressBar();
-				return new MethodResult(isRestarted.getErrorMessage());
+				return new Metric(isRestarted.getErrorMessage());
 			}
 
 			return null;
@@ -504,23 +524,23 @@ public class Estimator {
 
 		if (e.getMessage() == null) {
 			Console.writeStackTrace(e);
-			return new MethodResult(MessageStrings.ERROR_101);
+			return new Metric(MessageStrings.ERROR_101);
 		}
 
 		clientConnection.resetProgressBar();
-		return new MethodResult(e.getMessage());
+		return new Metric(e.getMessage());
 
 	}
 
 	
-	private MethodResult processException(IOException e) {
+	private Metric processException(IOException e) {
 		if (isDebug) {
 			Console.writeStackTrace(e);
 		}
 		if (e.getMessage() != null) {
-			return new MethodResult(e.getMessage());
+			return new Metric(e.getMessage());
 		} else {
-			return new MethodResult(MessageStrings.ERROR_FILE);
+			return new Metric(MessageStrings.ERROR_FILE);
 		}
 	}
 
@@ -545,7 +565,7 @@ public class Estimator {
 		return estimatorData.getFromTime();
 	}
 
-	public MethodResult setFromTime(String fromTime) {
+	public Metric setFromTime(String fromTime) {
 
 		updatePriceData();
 		estimatorData.setFromTime("");
@@ -555,16 +575,16 @@ public class Estimator {
 
 			if (fromTime.trim().equals("t")) {
 				estimatorData.setFromTime(fromTime);
-				return new MethodResult();
+				return new Metric();
 			} else {
 				String[] a = fromTime.trim().split("-");
 				try {
 
 					estimatorData.setFromTime(fromTime);
-					return new MethodResult();
+					return new Metric();
 
 				} catch (Exception e) {
-					return new MethodResult(String.format(MessageStrings.WRONG_TIME_FORMAT_FROM, fromTime));
+					return new Metric(String.format(MessageStrings.WRONG_TIME_FORMAT_FROM, fromTime));
 				}
 			}
 
@@ -574,9 +594,9 @@ public class Estimator {
 			try {
 				Timestamp t = Timestamp.valueOf(s);
 				estimatorData.setFromTime(fromTime);
-				return new MethodResult();
+				return new Metric();
 			} catch (Exception e) {
-				return new MethodResult(String.format(MessageStrings.WRONG_TIME_FORMAT_FROM, fromTime));
+				return new Metric(String.format(MessageStrings.WRONG_TIME_FORMAT_FROM, fromTime));
 
 			}
 		}
@@ -584,10 +604,10 @@ public class Estimator {
 		try {
 			Timestamp t = Timestamp.valueOf(fromTime);
 		} catch (Exception e) {
-			return new MethodResult(String.format(MessageStrings.WRONG_TIME_FORMAT_FROM, fromTime));
+			return new Metric(String.format(MessageStrings.WRONG_TIME_FORMAT_FROM, fromTime));
 		}
 		estimatorData.setFromTime(fromTime);
-		return new MethodResult();
+		return new Metric();
 	}
 
 	public String getToTime() {
@@ -599,7 +619,7 @@ public class Estimator {
 		clearCache();
 	}
 
-	public MethodResult setToTime(String toTime) {
+	public Metric setToTime(String toTime) {
 
 		updatePriceData();
 		estimatorData.setToTime("");
@@ -608,7 +628,7 @@ public class Estimator {
 
 			if (toTime.trim().equals("t")) {
 				estimatorData.setToTime(toTime);
-				return new MethodResult();
+				return new Metric();
 			}
 
 			else {
@@ -617,10 +637,10 @@ public class Estimator {
 				try {
 					int daysBack = Integer.parseInt(a[1].split("d")[0]);
 					estimatorData.setToTime(toTime);
-					return new MethodResult();
+					return new Metric();
 				} catch (Exception e) {
 
-					return new MethodResult(String.format(MessageStrings.WRONG_TIME_FORMAT_TO, toTime));
+					return new Metric(String.format(MessageStrings.WRONG_TIME_FORMAT_TO, toTime));
 
 				}
 			}
@@ -631,10 +651,10 @@ public class Estimator {
 			try {
 				Timestamp t = Timestamp.valueOf(s);
 				estimatorData.setToTime(toTime);
-				return new MethodResult();
+				return new Metric();
 			} catch (Exception e) {
 
-				return new MethodResult(String.format(MessageStrings.WRONG_TIME_FORMAT_TO, toTime));
+				return new Metric(String.format(MessageStrings.WRONG_TIME_FORMAT_TO, toTime));
 
 			}
 		}
@@ -644,11 +664,11 @@ public class Estimator {
 
 		} catch (Exception e) {
 
-			return new MethodResult(String.format(MessageStrings.WRONG_TIME_FORMAT_TO, toTime));
+			return new Metric(String.format(MessageStrings.WRONG_TIME_FORMAT_TO, toTime));
 
 		}
 		estimatorData.setToTime(toTime);
-		return new MethodResult();
+		return new Metric();
 	}
 
 	public String getSamplingInterval() {
@@ -744,7 +764,7 @@ public class Estimator {
 		this.clientConnection = clientConnection;
 	}
 
-	public MethodResult getAllSymbolsList() {
+	public Metric getAllSymbolsList() {
 
 		for (int ii = 0; ii < NUMBER_OF_TRIES; ii++) {
 			try {
@@ -753,7 +773,7 @@ public class Estimator {
 
 			} catch (Exception e) {
 
-				MethodResult result = processException(e);
+				Metric result = processException(e);
 				if (result == null)
 					continue;
 				return result;
@@ -762,7 +782,7 @@ public class Estimator {
 
 		}
 
-		return new MethodResult(MessageStrings.FAILED_SERVER_TIME_OUT);
+		return new Metric(MessageStrings.FAILED_SERVER_TIME_OUT);
 
 	}
 

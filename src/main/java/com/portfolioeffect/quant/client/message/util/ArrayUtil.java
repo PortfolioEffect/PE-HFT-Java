@@ -34,6 +34,8 @@ import me.lemire.integercompression.IntegerCODEC;
 
 import org.iq80.snappy.Snappy;
 
+import com.portfolioeffect.quant.client.exception.ClientException;
+
 public class ArrayUtil {
 
 	private static final IntegerCODEC codec = new Composition(new DeltaZigzagBinaryPacking(), new DeltaZigzagVariableByte());
@@ -42,7 +44,7 @@ public class ArrayUtil {
 		return compressBytes(toByteArray(packInt(intArray)));
 	}
 	
-	public static int[] unpackAndDecompressInts(int originalLength, byte[] bytesArray) throws Exception {
+	public static int[] unpackAndDecompressInts(int originalLength, byte[] bytesArray) throws ClientException  {
 		return unpackInt(toIntArray(decompressBytes(bytesArray)), originalLength);
 	}
 	
@@ -59,11 +61,11 @@ public class ArrayUtil {
 	}
 	
 	
-	public static float[] unpackAndDecompressFloats(int originalLength, byte[] bytesArray) throws Exception {
+	public static float[] unpackAndDecompressFloats(int originalLength, byte[] bytesArray) throws ClientException {
 		return toFloatArray(unpackInt(toIntArray(decompressBytes(bytesArray)), originalLength));
 	}
 	
-	public static long[] unpackAndDecompressLongs(int originalLength, byte[] bytesArray) throws Exception {
+	public static long[] unpackAndDecompressLongs(int originalLength, byte[] bytesArray) throws ClientException {
 		return toLongArray(unpackInt(toIntArray(decompressBytes(bytesArray)), originalLength*2));
 	}
 	
@@ -98,7 +100,7 @@ public class ArrayUtil {
 		return checkSumExt;
 	}
 	
-	public static byte[] decompressBytes(byte[] bytesArray) throws Exception { 
+	public static byte[] decompressBytes(byte[] bytesArray) throws ClientException  { 
 		
 		byte[] checkSumBuf = new byte[8];
 		checkSumBuf[0] = bytesArray[bytesArray.length-8];
@@ -119,7 +121,7 @@ public class ArrayUtil {
 	    Adler32 adler32 = new Adler32();
 		adler32.update(bytesArray, 0, bytesArray.length-8);
 		if(checkSum !=adler32.getValue())
-			throw new Exception("Data corruption detected - checksum failure. Please, try again.");
+			throw new ClientException("Data corruption detected - checksum failure. Please, try again.");
 	    
 		return Snappy.uncompress(bytesArray, 0, bytesArray.length -8 );
 	}

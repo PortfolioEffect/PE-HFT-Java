@@ -32,18 +32,20 @@ import com.portfolioeffect.quant.client.message.LogoutRequest;
 import com.portfolioeffect.quant.client.message.NonparametricComputeRequest;
 import com.portfolioeffect.quant.client.message.PortfolioComputeRequest;
 import com.portfolioeffect.quant.client.message.StandardHeader;
+import com.portfolioeffect.quant.client.message.TestEcho;
 import com.portfolioeffect.quant.client.message.TestRequest;
+import com.portfolioeffect.quant.client.message.TestUpdate;
 import com.portfolioeffect.quant.client.message.ValidationRequest;
 import com.portfolioeffect.quant.client.message.type.EncryptedPasswordMethodType;
 import com.portfolioeffect.quant.client.message.type.FastMessageType;
- 
+
 /**
  * @author alex
  * 
  */
 public class ClientRequestMessageParser {
 
-	
+
 	public static StandardHeader parseMessageHeader(Message msg) {
 		String applicationVersionId = msg.getString("ApplVerID").trim(); 
 		String messageCode = msg.getString("MessageType").trim();
@@ -69,7 +71,20 @@ public class ClientRequestMessageParser {
 		return logonRequest;
 	}
 
-	// Logout request parser
+	public static TestUpdate parseTestUpdateMsg(Message msg) {
+		long totalCount = msg.getLong("TotalCount");
+		long time = msg.getLong("Time");
+		double price = msg.getDouble("Price");
+
+		TestUpdate logonRequest =  new TestUpdate(price, time, totalCount);
+		return logonRequest;
+	}
+
+	public static TestEcho parseTestEcho(Message msg) {
+		TestEcho testEcho =  new TestEcho();
+		return testEcho;
+	}
+
 	public static LogoutRequest parseLogoutRequest(Message msg) {
 		StandardHeader messageHeader = parseMessageHeader(msg);
 		LogoutRequest logoutRequest =  new LogoutRequest(messageHeader);
@@ -96,31 +111,28 @@ public class ClientRequestMessageParser {
 		}
 		return testRequest;
 	}
-	
-	
-	public static NonparametricComputeRequest parseNonparametricComputeRequest(
-			Message msg) {
-		StandardHeader messageHeader = parseMessageHeader(msg);
 
-		
+
+	public static NonparametricComputeRequest parseNonparametricComputeRequest(Message msg) {
+
 		String requestType = msg.getString("RequestType");
 		String request = msg.getString("Request");
 
 		SequenceValue sValue = msg.getSequence("Data");
-			int lenght= sValue.getLength();
-			double price[] = new double[lenght];
-			int time[] = new int[lenght];
-			
-			int i = 0;
-			for (GroupValue gv : sValue.getValues()) {
-				int priceCent = gv.getInt("price");
-				double priceDollar = priceCent * 0.01;
-				int curentTime = gv.getInt("time");
-				price[i] = priceDollar;
-				time[i] = curentTime;
-				i++;
-			}
-		
+		int lenght= sValue.getLength();
+		double price[] = new double[lenght];
+		int time[] = new int[lenght];
+
+		int i = 0;
+		for (GroupValue gv : sValue.getValues()) {
+			int priceCent = gv.getInt("price");
+			double priceDollar = priceCent * 0.01;
+			int curentTime = gv.getInt("time");
+			price[i] = priceDollar;
+			time[i] = curentTime;
+			i++;
+		}
+
 		return new NonparametricComputeRequest(requestType, request, price, time); 
 	}
 
@@ -133,26 +145,26 @@ public class ClientRequestMessageParser {
 			request = msg.getString("Request");
 
 		return new ValidationRequest(request); 
-				
+
 	}
 
-	
+
 	public static PortfolioComputeRequest parsePortfolioComputeRequest(
 			Message msg) {
 		StandardHeader messageHeader = parseMessageHeader(msg);
-		
+
 		String request = null;
 		String params = null;
 		if (msg.isDefined("Request"))
 			request = msg.getString("Request");
-		
+
 		if (msg.isDefined("Params"))
 			params = msg.getString("Params");
-		
+
 		String requestType = msg.getString("RequestType");
 
 		return new PortfolioComputeRequest(requestType, request, params);				
-				
+
 	}
 
 

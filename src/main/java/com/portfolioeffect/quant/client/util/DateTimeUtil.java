@@ -22,6 +22,11 @@
  */
 package com.portfolioeffect.quant.client.util;
 
+import gnu.trove.list.array.TDoubleArrayList;
+import gnu.trove.list.array.TFloatArrayList;
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.list.array.TLongArrayList;
+
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -62,10 +67,15 @@ public class DateTimeUtil {
 		return deltaMillisec;
 	}
 
+	public static String[] POSIXTimeToDateStr(TLongArrayList timesMills, String formatStr) {
+		return POSIXTimeToDateStr( timesMills.toArray(), formatStr);
+	}
+	
 	public static String[] POSIXTimeToDateStr(long [] timesMills, String formatStr) {
 		DateFormat format = new SimpleDateFormat(formatStr);
 		return POSIXTimeToDateStr(timesMills, format);
 	}
+	
 	
 	public static String[] POSIXTimeToDateStr(long timesMills, String formatStr) {
 		return POSIXTimeToDateStr(new long[] {timesMills}, formatStr);
@@ -74,6 +84,9 @@ public class DateTimeUtil {
 	public static int[] POSIXTimeToDateInt(long timesMills, String formatStr) {
 		return POSIXTimeToDateInt(new long [] {timesMills}, formatStr);
 	}
+	
+	
+	
 	
 	public static double[] testNAVector() {
 		double [] naVector = new double[23400];
@@ -84,6 +97,10 @@ public class DateTimeUtil {
 		return naVector;
 	}
 	
+	
+	public static TIntArrayList POSIXTimeToDateInt(TLongArrayList timesMills, String formatStr) {
+		return new TIntArrayList(POSIXTimeToDateInt(timesMills.toArray(),  formatStr));
+	}
 	
 	public static int[] POSIXTimeToDateInt(long [] timesMills, String formatStr) {
 		int field = -1;
@@ -121,12 +138,19 @@ public class DateTimeUtil {
 		for (int i = 0; i < timesMills.length; i ++ ) {
 			dataBaseTime.setTimeInMillis(timesMills[i]);
 			vals[i] = dataBaseTime.get(field);
+			if(field == Calendar.MONTH) {
+				vals[i] += 1;
+			}	
 		}
 		return vals;
 	}
 	
 	public static String[] POSIXTimeToDateStr(long timesMills, DateFormat dateFormat) {
 		return POSIXTimeToDateStr(new long [] {timesMills}, dateFormat);
+	}
+	
+	public static String[] POSIXTimeToDateStr(TLongArrayList timesMills, DateFormat dateFormat) {
+		return  POSIXTimeToDateStr(timesMills.toArray(), dateFormat);
 	}
 	
 	public static String[] POSIXTimeToDateStr(long [] timesMills, DateFormat dateFormat) {
@@ -140,6 +164,10 @@ public class DateTimeUtil {
 		return datesStr;
 	}
 	
+	public static String[] POSIXTimeToDateStr(TLongArrayList timesMills) {
+		return POSIXTimeToDateStr( timesMills.toArray());
+	}
+	
 	public static String[] POSIXTimeToDateStr(long [] timesMills) {
 		return POSIXTimeToDateStr(timesMills, FULL_DATE_FORMAT);
 	}
@@ -148,8 +176,16 @@ public class DateTimeUtil {
 		return POSIXTimeToDateStr(new long[] {timesMills}, FULL_DATE_FORMAT);
 	}
 	
+	public static TLongArrayList toPOSIXTimeTLongArrayList(String timeString) {
+		return new TLongArrayList( toPOSIXTime(timeString));
+	}
+	
 	public static long[] toPOSIXTime(String timeString) {
 		return toPOSIXTime(new String[] {timeString});
+	}
+	
+	public static TLongArrayList toPOSIXTimeTLongArrayList(String[] timeString) {
+		return new  TLongArrayList( toPOSIXTime(timeString) );
 	}
 	
 	public static long[] toPOSIXTime(String[] timeString) {
@@ -157,6 +193,25 @@ public class DateTimeUtil {
 		for (int i = 0; i < timeString.length; i++)
 			timeLong[i] = Timestamp.valueOf(timeString[i]).getTime();
 		return timeLong;
-	}	
+	}
+	
+	public static TLongArrayList  toPOSIXTimeWithDeltaTLongArrayList(String timeString) {
+		return new  TLongArrayList( toPOSIXTimeWithDelta( timeString));
+	}
+	
+	public static long[] toPOSIXTimeWithDelta(String timeString) {
+		return toPOSIXTimeWithDelta(new String[] {timeString});
+	}
+	
+	public static TLongArrayList toPOSIXTimeWithDeltaTLongArrayList(String[] timeString) {
+		return new TLongArrayList( toPOSIXTimeWithDelta(timeString));
+	}
+	
+	public static long[] toPOSIXTimeWithDelta(String[] timeString) {
+		long[] timeLong = new long[timeString.length];
+		for (int i = 0; i < timeString.length; i++)
+			timeLong[i] = Timestamp.valueOf(timeString[i]).getTime() - DateTimeUtil.CLIENT_TIME_DELTA;
+		return timeLong;
+	}
 	
 }

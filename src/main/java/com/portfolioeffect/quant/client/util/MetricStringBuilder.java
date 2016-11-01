@@ -27,7 +27,7 @@ package com.portfolioeffect.quant.client.util;
 import java.util.HashMap;
 
 import com.google.gson.Gson;
-import com.portfolioeffect.quant.client.type.MetricsType;
+import com.portfolioeffect.quant.client.type.MetricsTypeFull;
 
 
 public class MetricStringBuilder {
@@ -40,7 +40,7 @@ public class MetricStringBuilder {
 		return this;	
 	}
 	
-	public MetricStringBuilder setMetric(MetricsType metric) {
+	public MetricStringBuilder setMetric(MetricsTypeFull metric) {
 		map.put("metric", "" + metric);
 		return this;
 
@@ -51,6 +51,14 @@ public class MetricStringBuilder {
 		return this;
 		
 	}
+	
+	public MetricStringBuilder setWindowLength(String windowLength){
+		map.put("windowLength",windowLength);
+		return this;
+		
+	}
+	
+	
 	
 	public MetricStringBuilder setSortDirection(String sortDirection){
 		map.put("sort_direction",sortDirection);//ascending  -- descending
@@ -129,5 +137,29 @@ public class MetricStringBuilder {
 		Gson gson = new Gson();
 		return gson.toJson(map);
 	}
+	
+//	public MetricStringBuilder addKeyValue(String key,String value){
+//		
+//		map.put(key, value.replace('\"', '\''));
+//		
+//		
+//		return this;
+//		
+//	}
+//	
+//	public MetricStringBuilder addJSONString(String key,String value){
+//		
+//		map.put(key, value.replace('\"', '\''));
+//		
+//		
+//		return this;
+//		
+//	}
+
+	public HashMap<String, String> getMap() {
+		return map;
+	}
+	
+	
 
 }

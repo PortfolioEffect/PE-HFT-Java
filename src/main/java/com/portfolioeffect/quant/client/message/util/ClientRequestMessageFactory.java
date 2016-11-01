@@ -67,12 +67,30 @@ public class ClientRequestMessageFactory {
 			int msgSeqNum, String testReqId) {
 		MessageTemplate template = templateRegistry.get("Heartbeat");
 		Message msg = new Message(template);
+		
 		msg.setInteger("MsgSeqNum", msgSeqNum);
 		msg.setLong("SendingTime", System.currentTimeMillis());
 		msg.setString("TestReqID", testReqId);
 		return msg;
 	}
 	
+	public static Message createTestUpdate(TemplateRegistry templateRegistry, double price, long time, long totalCount) {
+		MessageTemplate template = templateRegistry.get("TestUpdate");
+		Message msg = new Message(template);
+		
+		msg.setDecimal("Price", price);
+		msg.setLong("Time", time);
+		msg.setLong("TotalCount", totalCount);
+		return msg;
+	}
+	
+	public static Message createTestEcho(TemplateRegistry templateRegistry) {
+		MessageTemplate template = templateRegistry.get("TestEcho");
+		Message msg = new Message(template);
+		return msg;
+	}
+	
+
 	public static Message createNonparametricComputeRequest(TemplateRegistry templateRegistry, String requestType, 
 			String request, double[] price, int[] time, int msgSeqNum, long timestamp) {
 		MessageTemplate template = templateRegistry.get("FunctionComputeRequest");

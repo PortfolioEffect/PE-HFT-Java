@@ -24,6 +24,11 @@ package com.portfolioeffect.quant.client.model;
 
 public class ComputeErrorException extends Exception {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3179625186574473817L;
+
 	public ComputeErrorException(String message) {
 		super(message);	
 	}

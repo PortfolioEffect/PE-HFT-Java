@@ -22,11 +22,13 @@
  */
 package com.portfolioeffect.quant.client.portfolio;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -36,8 +38,55 @@ import com.portfolioeffect.quant.client.ClientConnection;
 
 public class PortfolioData {
 
+	private static final HashSet<String> estimatorParams;
+	private static final HashSet<String> portfoliorParams;
+	
+	static{
+		estimatorParams= new HashSet<String>();
+		portfoliorParams= new HashSet<String>();
+		
+		estimatorParams.add("fromTime");
+		estimatorParams.add("toTime");
+		estimatorParams.add("portfolioId");
+		estimatorParams.add("indexSymbol");
+		estimatorParams.add("spotWindowLength");
+		estimatorParams.add("timeScale");
+		estimatorParams.add("samplingInterval");
+		estimatorParams.add("priceSamplingInterval");
+		estimatorParams.add("jumpsModel");
+		estimatorParams.add("isNoiseModelEnabled");
+		estimatorParams.add("isFractalPriceModelEnabled");
+		estimatorParams.add("isStartWhenBurn");
+		estimatorParams.add("synchronizationModel");
+		estimatorParams.add("riskMethodology");
+		estimatorParams.add("stream");
+		estimatorParams.add("trainingModel");
+		
+		portfoliorParams.add("windowLength");
+		portfoliorParams.add("portfolioId");
+		portfoliorParams.add("shortSalesMode"); 
+		portfoliorParams.add("isHoldingPeriodEnabled");
+		portfoliorParams.add("isRebalancingHistoryEnabled");
+		portfoliorParams.add("isDriftEnabled");
+		portfoliorParams.add("txnCostFixed");
+		portfoliorParams.add("txnCostPerShare");
+		portfoliorParams.add("densityApproxModel");
+		portfoliorParams.add("isNoBurnMoment");
+		portfoliorParams.add("portfolioMetricsMode");
+			
+				
+		
+	
+	}
+	
+	
+	private boolean isNaNFiltered = true;
+	private boolean isNaN2Zero=false;
+	
+	private HashMap<String, String> estimatorSettings;
+	
+	private HashMap<String, String> portfolioSettings;
 
-	private HashMap<String, String> settings;
 	private HashMap<String, ArrayCache> symbolQuantityMap;
 	private HashMap<String, ArrayCache> symbolQuantityTimeMap;
 	private HashMap<String, ArrayCache> symbolPriceMap;
@@ -53,26 +102,50 @@ public class PortfolioData {
 
 	private Set<String> userPrice;
 
-	public PortfolioData(PortfolioData data) {
+	public PortfolioData(PortfolioData data) throws IOException {
 
 
-		this.symbolQuantityMap = new HashMap<String, ArrayCache>(data.symbolQuantityMap);
-		this.symbolQuantityTimeMap = new HashMap<String, ArrayCache>(data.symbolQuantityTimeMap);
-		this.symbolPriceMap = new HashMap<String, ArrayCache>(data.symbolPriceMap);
-		this.symbolPriceTimeMap = new HashMap<String, ArrayCache>(data.symbolPriceTimeMap);
+		this.symbolQuantityMap = new HashMap<String, ArrayCache>();
+		for(String e: data.symbolQuantityMap.keySet()){
+			symbolQuantityMap.put(e, new ArrayCache(  data.symbolQuantityMap.get(e).getIntArray() ) );
+		}
+		
+		
+		this.symbolQuantityTimeMap = new HashMap<String, ArrayCache>();
+		for(String e: data.symbolQuantityTimeMap.keySet()){
+			symbolQuantityTimeMap.put(e, new ArrayCache(  data.symbolQuantityTimeMap.get(e).getLongArray() ) );
+		}
+		
+		this.symbolPriceMap = new HashMap<String, ArrayCache>();
+		for(String e: data.symbolPriceMap.keySet()){
+			symbolPriceMap.put(e, new ArrayCache(  data.symbolPriceMap.get(e).getDoubleArray() ) );
+		}
+		
+		
+		this.symbolPriceTimeMap = new HashMap<String, ArrayCache>();
+		for(String e: data.symbolPriceTimeMap.keySet()){
+			symbolPriceTimeMap.put(e, new ArrayCache(  data.symbolPriceTimeMap.get(e).getLongArray() ) );
+		}
+		
+		
+		
 		this.symbolNamesList = new ArrayList<String>(data.symbolNamesList);
 		this.dataId = data.dataId;
 		
 
-		this.indexPrice = data.indexPrice;
-		this.indexTimeMillisec = data.indexTimeMillisec;
+		if(data.indexPrice!=null)
+			this.indexPrice = new ArrayCache(data.indexPrice.getDoubleArray());
+		if(data.indexTimeMillisec!=null)
+			this.indexTimeMillisec = new ArrayCache(data.indexTimeMillisec.getLongArray());
 		this.priceID = new HashMap<String, Long>(data.priceID);
 		this.quantityID = new HashMap<String, Long>(data.quantityID);
 
 		this.userPrice = new HashSet<String>(data.userPrice);
-		this.settings = new HashMap<String, String>(data.settings);
+		 
+		estimatorSettings = new HashMap<String, String>(data.estimatorSettings);
+		portfolioSettings = new HashMap<String, String>(data.portfolioSettings);
 		
-		settings.put("portfolioId", ""+ClientConnection.getNewId());
+		estimatorSettings.put("portfolioId", ""+ClientConnection.getNewId());
 
 	}
 
@@ -84,11 +157,13 @@ public class PortfolioData {
 		symbolPriceMap = new HashMap<String, ArrayCache>();
 		symbolPriceTimeMap = new HashMap<String, ArrayCache>();
 		symbolNamesList = new ArrayList<String>();
-		settings = new HashMap<String, String>();
-		settings.put("fromTime","#");
-		settings.put("toTime", "#");
+		estimatorSettings = new HashMap<String, String>();
+		portfolioSettings = new HashMap<String, String>();
+		portfolioSettings.put("windowLength", "1d");
+		estimatorSettings.put("fromTime","#");
+		estimatorSettings.put("toTime", "#");
 		dataId = 0;
-		settings.put("portfolioId", ""+ClientConnection.getNewId());
+		estimatorSettings.put("portfolioId", ""+ClientConnection.getNewId());
 
 		indexPrice = null;
 		indexTimeMillisec = null;
@@ -100,11 +175,11 @@ public class PortfolioData {
 	}
 
 	public String getIndexSymbol() {
-		return settings.get("indexSymbol");
+		return estimatorSettings.get("indexSymbol");
 	}
 
 	public void setIndexSymbol(String indexSymbol) {
-		settings.put("indexSymbol", indexSymbol);
+		estimatorSettings.put("indexSymbol", indexSymbol);
 	}
 
 	public HashMap<String, ArrayCache> getSymbolQuantityMap() {
@@ -148,19 +223,19 @@ public class PortfolioData {
 	}
 
 	public String getFromTime() {
-		return settings.get("fromTime");
+		return estimatorSettings.get("fromTime");
 	}
 
 	public void setFromTime(String fromTime) {
-		settings.put("fromTime", fromTime);
+		estimatorSettings.put("fromTime", fromTime);
 	}
 
 	public String getToTime() {
-		return settings.get("toTime");
+		return estimatorSettings.get("toTime");
 	}
 
 	public void setToTime(String toTime) {
-		settings.put("toTime",toTime);
+		estimatorSettings.put("toTime",toTime);
 	}
 
 	public long getDataId() {
@@ -172,12 +247,12 @@ public class PortfolioData {
 	}
 
 	public long getPortfolioId() {
-		return Long.valueOf( settings.get("portfolioId") );
+		return Long.valueOf( estimatorSettings.get("portfolioId") );
 	}
 
 	
 	public void setPortfolioId(long portfolioId) {
-		settings.put("portfolioId", ""+ClientConnection.getNewId());
+		estimatorSettings.put("portfolioId", ""+ClientConnection.getNewId());
 		
 	}
 
@@ -226,33 +301,205 @@ public class PortfolioData {
 		this.userPrice = userPrice;
 	}
 	
-	public HashMap<String, String> getSettings() {
+	public HashMap<String, String> getSettingsReal() {
+		HashMap<String, String> settings = new HashMap<String, String>();
+		
+		
+		
+		for(Entry<String, String> e: estimatorSettings.entrySet())
+			settings.put(e.getKey(), e.getValue());
+			
+		for(Entry<String, String> e: portfolioSettings.entrySet())
+				settings.put(e.getKey(), e.getValue());
+		
+		
 		return settings;
+	}
+	
+	public HashMap<String, String> getSettings() {
+		HashMap<String, String> settings = new HashMap<String, String>();
+		
+		
+		
+		for(Entry<String, String> e: estimatorSettings.entrySet())
+			settings.put(renameParamsInverse(e.getKey()), e.getValue());
+			
+		for(Entry<String, String> e: portfolioSettings.entrySet())
+				settings.put(renameParamsInverse(e.getKey()), e.getValue());
+		
+		
+		return settings;
+	}
+
+	public HashMap<String, String> getPortfolioSettings() {
+		return portfolioSettings;
+	}
+
+	public HashMap<String, String> getEstimatorSettings() {
+		return estimatorSettings;
+	}
+
+	
+	
+	private String renameParams(String param){
+
+		if(param.equals("holdingPeriodsOnly"))
+			return "isHoldingPeriodEnabled";
+		
+		if(param.equals("noiseModel"))
+			return "isNoiseModelEnabled";
+		
+		
+		if(param.equals("fractalPriceModel"))
+			return "isFractalPriceModelEnabled";
+
+
+		if(param.equals("densityModel"))
+			return "densityApproxModel";
+
+		if(param.equals("driftTerm"))
+			return "isDriftEnabled";
+
+		if(param.equals("resultsSamplingInterval"))
+			return "samplingInterval";
+
+		if(param.equals("inputSamplingInterval"))
+			return "priceSamplingInterval";
+
+		
+		return param;
+		
+	}
+	
+	
+	private String renameParamsInverse(String param){
+
+		if(param.equals("isHoldingPeriodEnabled"))
+			return "holdingPeriodsOnly";
+		
+		if(param.equals("isNoiseModelEnabled"))
+			return "noiseModel";
+		
+		
+		if(param.equals("isFractalPriceModelEnabled"))
+			return "fractalPriceModel";
+
+
+		if(param.equals("densityApproxModel"))
+			return "densityModel";
+
+		if(param.equals("isDriftEnabled"))
+			return "driftTerm";
+
+		if(param.equals("samplingInterval"))
+			return "resultsSamplingInterval";
+
+		if(param.equals("priceSamplingInterval"))
+			return "inputSamplingInterval";
+
+		
+		return param;
+		
 	}
 
 	
 	public void setParam(String key, String value){
-		settings.put(key, value);		
+		
+		if(key.equals("resultsNAFilter")){
+			setNaNFiltered(value.equals("true"));
+			return;
+		}
+		
+		key = renameParams(key);
+		
+		if(estimatorParams.contains(key))
+			estimatorSettings.put(key, value);
+		else
+			portfolioSettings.put(key, value);
+	}
+	
+	public void removeParam(String key){
+		if(estimatorParams.contains(key))
+			estimatorSettings.remove(key);
+		else
+			portfolioSettings.remove(key);
+	}
+	
+	public boolean containsParam(String key){
+		if(estimatorParams.contains(key))
+			return estimatorSettings.containsKey(key);
+		else
+			return portfolioSettings.containsKey(key);
 	}
 	
 	public String getParam(String key){
-		return settings.get(key);
+		
+		if(key.equals("resultsNAFilter")){
+			
+			return ""+isNaNFiltered;
+		}
+		
+		
+		if(estimatorParams.contains(key))
+			return estimatorSettings.get(key);
+		else
+			return portfolioSettings.get(key);
 	}
 	
 	public void setSettings(HashMap<String, String> settings) {
-		this.settings = settings;
+		
+		for(Entry<String,String>  e: settings.entrySet()){
+			
+			setParam(e.getKey(),e.getValue());
+			
+		}		
+		
 	}
 	
 	public void setSettingJSON(String JSONString){
 		Gson gson = new Gson();
 		Type mapType = new TypeToken<HashMap<String,String>>() {}.getType();
-		settings  = gson.fromJson(JSONString, mapType);
+		HashMap<String,String> newSettings= gson.fromJson(JSONString, mapType);
+		setSettings(newSettings );
 	}
 	
 	public String getSettingJSON(){
 		Gson gson = new Gson();
+		HashMap<String, String> settings = new HashMap<String, String>();
+		settings.putAll(estimatorSettings);
+		settings.putAll(portfolioSettings);
 		return  gson.toJson(settings);	
 	}
 
+
+	public  boolean isNaNFiltered() {
+		return isNaNFiltered;
+	}
+
+	public void setNaNFiltered(boolean isNaNFiltered) {
+		this.isNaNFiltered = isNaNFiltered;
+	}
+
+	public  boolean isNaN2Zero() {
+		return isNaN2Zero;
+	}
+
+	public  void setNaN2Zero(boolean isNaN2Zero) {
+		this.isNaN2Zero = isNaN2Zero;
+	}
+	
+	public boolean checkEstimatorParams(String params){
+		return estimatorParams.contains(params);
+	}
+	
+	public boolean checkPortfolioParams(String params){
+		return estimatorParams.contains(params) || portfoliorParams.contains(params);
+	}
+	public void setPortfolioSettings(HashMap<String, String> portfolioSettings) {
+		this.portfolioSettings = portfolioSettings;
+	}
+	public void setEstimatorSettings(HashMap<String, String> estimatorSettings) {
+		this.estimatorSettings = estimatorSettings;
+	}
 
 }

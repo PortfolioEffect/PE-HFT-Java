@@ -32,14 +32,17 @@ public class TransmitDataListMessage {
 	private final String toTime;
 	private final String priceSamplingInterval;
 	private final String riskMethodology;
+	private final String trainingPeriodEnabled;
 	
-	public TransmitDataListMessage(ArrayList<String> dataList, String windowLength, String fromTime, String toTime, String priceSamplingInterval, String riskMethodology) {
+	
+	public TransmitDataListMessage(ArrayList<String> dataList, String windowLength, String fromTime, String toTime, String priceSamplingInterval, String riskMethodology, String trainingPeriodEnabled) {
 		this.dataList = dataList;
 		this.windowLength = windowLength;
 		this.fromTime = fromTime;
 		this.toTime = toTime;
 		this.priceSamplingInterval =  priceSamplingInterval;
 		this.riskMethodology = riskMethodology;
+		this.trainingPeriodEnabled = trainingPeriodEnabled;
 	}
 	
 	public String getRiskMethodology() {
@@ -66,6 +69,9 @@ public class TransmitDataListMessage {
 		return priceSamplingInterval;
 	}
 
+	public String getTrainingPeriodEnabled() {
+		return trainingPeriodEnabled;
+	}
 	
 
 }

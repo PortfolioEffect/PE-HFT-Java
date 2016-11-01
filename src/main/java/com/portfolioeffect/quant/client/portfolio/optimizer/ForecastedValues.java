@@ -22,11 +22,15 @@
  */
 package com.portfolioeffect.quant.client.portfolio.optimizer;
 
+import gnu.trove.list.array.TDoubleArrayList;
+import gnu.trove.list.array.TLongArrayList;
+
 import java.io.IOException;
 import java.util.ArrayList;
+
 import com.portfolioeffect.quant.client.portfolio.ArrayCache;
 import com.portfolioeffect.quant.client.portfolio.Portfolio;
-import com.portfolioeffect.quant.client.result.MethodResult;
+import com.portfolioeffect.quant.client.result.Metric;
 import com.portfolioeffect.quant.client.util.MessageStrings;
 
 public class ForecastedValues {
@@ -85,7 +89,7 @@ public class ForecastedValues {
 
 	}
 
-	public MethodResult isAllForecastedValuesPresent() {
+	public Metric isAllForecastedValuesPresent() {
 
 		String symbols = "";
 
@@ -96,27 +100,32 @@ public class ForecastedValues {
 		}
 
 		if (symbols.equals(""))
-			return new MethodResult();
+			return new Metric();
 		else
-			return new MethodResult("The next values not defined:\n" + symbols);
+			return new Metric("The next values not defined:\n" + symbols);
 	}
-
-	public MethodResult setForecastTimeStep(double value) {
+//checkResult(portfolio.addUserData("expTimeStep", timeStep, timeStepTimeMilliSec));
+	public Metric setForecastTimeStep(double value) {
 		return setForecastTimeStep(new double[] { value }, new long[] { -1 });
 	}
 
-	public MethodResult setForecastTimeStep(String value) {
+	public Metric setForecastTimeStep(String value) {
 		try {
 
 			N = parseTimeInterval(value, "forecast time step");
 
 			return setForecastTimeStep(new double[] { N }, new long[] { -1 });
 		} catch (Exception e) {
-			return new MethodResult(e.getMessage());
+			return new Metric(e.getMessage());
 		}
 	}
 
-	public MethodResult setForecastTimeStep(double[] value, long[] time) {
+	
+	public Metric setForecastTimeStep(TDoubleArrayList value, TLongArrayList time) {
+		return setForecastTimeStep( value.toArray(), time.toArray());
+	}
+	
+	public Metric setForecastTimeStep(double[] value, long[] time) {
 
 		try {
 			timeStep = new ArrayCache(value);
@@ -125,20 +134,25 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isTimeStep = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setSymbolForecastedExpReturn(String symbol, double[] value, long[] time) {
+	
+	public Metric setSymbolForecastedExpReturn(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedExpReturn( symbol,  value.toArray(),  time.toArray());
+	}
+	
+	public Metric setSymbolForecastedExpReturn(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
-			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
+			return new Metric(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
 
 		int index = symbolsName.indexOf(symbol);
 
@@ -149,20 +163,24 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isSymbolCumulantPresent[index][0] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setSymbolForecastedBeta(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedBeta(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedBeta( symbol,  value,  time);
+	}
+	
+	public Metric setSymbolForecastedBeta(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
-			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
+			return new Metric(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
 
 		int index = symbolsName.indexOf(symbol);
 
@@ -172,20 +190,24 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isSymbolCumulantPresent[index][4] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setSymbolForecastedVariance(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedVariance(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedVariance( symbol,  value.toArray(),  time.toArray()) ;
+	}
+	
+	public Metric setSymbolForecastedVariance(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
-			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
+			return new Metric(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
 
 		int index = symbolsName.indexOf(symbol);
 
@@ -196,20 +218,24 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isSymbolCumulantPresent[index][1] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setSymbolForecastedSkewness(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedSkewness(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedSkewness( symbol,  value.toArray(),  time.toArray());
+	}
+	
+	public Metric setSymbolForecastedSkewness(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
-			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
+			return new Metric(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
 
 		int index = symbolsName.indexOf(symbol);
 
@@ -220,20 +246,24 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isSymbolCumulantPresent[index][2] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setSymbolForecastedKurtosis(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedKurtosis(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return setSymbolForecastedKurtosis(symbol, value.toArray()	,  time.toArray());
+	}
+	
+	public Metric setSymbolForecastedKurtosis(String symbol, double[] value, long[] time) {
 
 		if (!symbolsName.contains(symbol))
-			return new MethodResult(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
+			return new Metric(String.format(MessageStrings.SYMBOL_NOT_IN_PORTFOLIO, symbol));
 
 		int index = symbolsName.indexOf(symbol);
 
@@ -244,44 +274,67 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isSymbolCumulantPresent[index][3] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setSymbolForecastedCumulant1(String symbol, double[] value, long[] time) {
+	
+	public Metric setSymbolForecastedCumulant1(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedCumulant1(symbol, value.toArray()	,  time.toArray());
+	}
+	
+	public Metric setSymbolForecastedCumulant1(String symbol, double[] value, long[] time) {
 
 		return setSymbolForecastedExpReturn(symbol, value, time);
 
 	}
 
-	public MethodResult setSymbolForecastedCumulant2(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedCumulant2(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedCumulant2(symbol, value.toArray()	,  time.toArray());
+	}
+	
+	public Metric setSymbolForecastedCumulant2(String symbol, double[] value, long[] time) {
 
 		return setSymbolForecastedVariance(symbol, value, time);
 
 	}
 
-	public MethodResult setSymbolForecastedCumulant3(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedCumulant3(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedCumulant3(symbol, value.toArray()	,  time.toArray());
+	}
+	
+	
+	public Metric setSymbolForecastedCumulant3(String symbol, double[] value, long[] time) {
 
-		MethodResult result = setSymbolForecastedSkewness(symbol, value, time);
+		Metric result = setSymbolForecastedSkewness(symbol, value, time);
 		isCumulants[symbolsName.indexOf(symbol)][0] = true;
 		return result;
 
 	}
 
-	public MethodResult setSymbolForecastedCumulant4(String symbol, double[] value, long[] time) {
+	public Metric setSymbolForecastedCumulant4(String symbol, TDoubleArrayList value, TLongArrayList time) {
+		return  setSymbolForecastedCumulant4(symbol, value.toArray()	,  time.toArray());
+	}
+	
+	
+	public Metric setSymbolForecastedCumulant4(String symbol, double[] value, long[] time) {
 
-		MethodResult result = setSymbolForecastedKurtosis(symbol, value, time);
+		Metric result = setSymbolForecastedKurtosis(symbol, value, time);
 		isCumulants[symbolsName.indexOf(symbol)][1] = true;
 		return result;
 	}
 
-	public MethodResult setIndexForecastedVariance(double[] value, long[] time) {
+	public Metric setIndexForecastedVariance( TDoubleArrayList value, TLongArrayList time) {
+		return  setIndexForecastedVariance( value.toArray()	,  time.toArray());
+	}
+	
+	public Metric setIndexForecastedVariance(double[] value, long[] time) {
 
 		try {
 			forecastedIndexValue[1] = new ArrayCache(value);
@@ -290,17 +343,21 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isIndexCumulantPresent[1] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setIndexForecastedSkewness(double[] value, long[] time) {
+	public Metric setIndexForecastedSkewness( TDoubleArrayList value, TLongArrayList time) {
+		return setIndexForecastedSkewness( value.toArray()	,  time.toArray());
+	}
+	
+	public Metric setIndexForecastedSkewness(double[] value, long[] time) {
 
 		try {
 			forecastedIndexValue[2] = new ArrayCache(value);
@@ -309,17 +366,22 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isIndexCumulantPresent[2] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setIndexForecastedKurtosis(double[] value, long[] time) {
+	public Metric setIndexForecastedKurtosis( TDoubleArrayList value, TLongArrayList time) {
+		return setIndexForecastedKurtosis( value.toArray()	,  time.toArray());
+	}
+	
+	
+	public Metric setIndexForecastedKurtosis(double[] value, long[] time) {
 
 		try {
 			forecastedIndexValue[3] = new ArrayCache(value);
@@ -328,36 +390,51 @@ public class ForecastedValues {
 
 		} catch (IOException e) {
 			if (e.getMessage() != null)
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			else
-				return new MethodResult(MessageStrings.ERROR_FILE);
+				return new Metric(MessageStrings.ERROR_FILE);
 		}
 
 		isIndexCumulantPresent[3] = true;
 
-		return new MethodResult();
+		return new Metric();
 	}
 
-	public MethodResult setIndexForecastedCumulant2(double[] value, long[] time) {
+	public Metric setIndexForecastedCumulant2( TDoubleArrayList value, TLongArrayList time) {
+		return setIndexForecastedCumulant2( value.toArray()	,  time.toArray());
+	}
+	
+	
+	public Metric setIndexForecastedCumulant2(double[] value, long[] time) {
 
 		return setIndexForecastedVariance(value, time);
 
 	}
+	
+	public Metric setIndexForecastedCumulant3( TDoubleArrayList value, TLongArrayList time) {
+		return setIndexForecastedCumulant3( value.toArray()	,  time.toArray());
+	}
+	
 
-	public MethodResult setIndexForecastedCumulant3(double[] value, long[] time) {
-		MethodResult result = setIndexForecastedSkewness(value, time);
+	public Metric setIndexForecastedCumulant3(double[] value, long[] time) {
+		Metric result = setIndexForecastedSkewness(value, time);
 		isCumulantsIndex[0] = true;
 		return result;
 	}
 
-	public MethodResult setIndexForecastedCumulant4(double[] value, long[] time) {
+	public Metric setIndexForecastedCumulant4( TDoubleArrayList value, TLongArrayList time) {
+		return setIndexForecastedCumulant4( value.toArray()	,  time.toArray());
+	}
+	
+	
+	public Metric setIndexForecastedCumulant4(double[] value, long[] time) {
 
-		MethodResult result = setIndexForecastedKurtosis(value, time);
+		Metric result = setIndexForecastedKurtosis(value, time);
 		isCumulantsIndex[1] = true;
 		return result;
 	}
 
-	private MethodResult checkResult(MethodResult result) throws Exception {
+	private Metric checkResult(Metric result) throws Exception {
 
 		if (result.hasError())
 			throw new Exception(result.getErrorMessage());
@@ -413,12 +490,13 @@ public class ForecastedValues {
 
 	}
 
-	public MethodResult addToPortfolio(Portfolio portfolio) {
+	public Metric addToPortfolio(Portfolio portfolio) {
 
 		try {
 
 			checkResult(isAllForecastedValuesPresent());
-			checkResult(portfolio.addUserData("expTimeStep", timeStep, timeStepTimeMilliSec));
+			if(timeStep!=null && timeStepTimeMilliSec!=null)
+				checkResult(portfolio.addUserData("expTimeStep", timeStep, timeStepTimeMilliSec));
 
 			if (isIndexCumulantPresent[1])
 				checkResult(portfolio.addUserData("IndexVariance", forecastedIndexValue[1], forecastedIndexValueTime[1]));
@@ -462,10 +540,10 @@ public class ForecastedValues {
 			}
 
 		} catch (Exception e) {
-			return new MethodResult(e.getMessage());
+			return new Metric(e.getMessage());
 		}
 
-		return new MethodResult();
+		return new Metric();
 	}
 
 }

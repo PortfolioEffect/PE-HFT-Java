@@ -26,16 +26,17 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 import org.iq80.snappy.Snappy;
 import org.openfast.Context;
 import org.openfast.Message;
@@ -57,7 +58,6 @@ import com.google.gson.reflect.TypeToken;
 import com.portfolioeffect.quant.client.message.CalculationStatusMessage;
 import com.portfolioeffect.quant.client.message.ClientMessage;
 import com.portfolioeffect.quant.client.message.LogoutResponse;
-import com.portfolioeffect.quant.client.message.NonparametricComputeResponse;
 import com.portfolioeffect.quant.client.message.Reject;
 import com.portfolioeffect.quant.client.message.ServiceMessage;
 import com.portfolioeffect.quant.client.message.TestRequest;
@@ -76,21 +76,25 @@ import com.portfolioeffect.quant.client.model.ConnectFailedException;
 import com.portfolioeffect.quant.client.model.PriceDataSet;
 import com.portfolioeffect.quant.client.portfolio.ArrayCache;
 import com.portfolioeffect.quant.client.portfolio.ArrayCacheType;
-import com.portfolioeffect.quant.client.result.MethodResult;
+import com.portfolioeffect.quant.client.result.Metric;
 import com.portfolioeffect.quant.client.util.Console;
+import com.portfolioeffect.quant.client.util.DateTimeUtil;
 import com.portfolioeffect.quant.client.util.MessageStrings;
+import com.portfolioeffect.quant.client.util.MetricRefreshValue;
 import com.portfolioeffect.quant.client.util.ProgressBar;
 import com.portfolioeffect.quant.client.util.StopWatch;
+import com.portfolioeffect.quant.client.util.MetricUpdateCallback;
+import com.portfolioeffect.quant.client.util.SimpleMetricUpdateCallback;
 
-public class ClientConnection  {
+public class ClientConnection {
 
-	private static final int RESTART_ATTEMPTS_COUNT = 5;
-	private static final int TIME_WAIT_TOPRINT = 30;
+	private static final int MILLISEC_IN_SECOND = 1000;
+	public static final String STREAM_IS_ALREADY_RUNNING = "Stream is already running";
+	private static final int TIME_WAIT_TOPRINT = 20;
 	private static final String SUPPORTED_CHARSET = "US-ASCII";
 	private static final int TEST_PORT_NUMBER = 3443;
 	private static final int MAX_BLOCK_DIMENSION = 100000;
-	private static final int BLOCK_DIMENSION_DECREASE_STEP = 10;
-	private static final int USER_LAYER_TIMEOUT_SECONDS_ESTIMATE = 60 * 5;
+	private static final int USER_LAYER_TIMEOUT_SECONDS_ESTIMATE =  60 * 5;
 	private static final int DATA_TRANSMIT_TIMEOUT_SECONDS_ESTIMATE = 60 * 5;
 	private static final int LOGON_TIMEOUT_SECONDS = 30;
 	private static final int SERVICE_TIMEOUT_SEC = 30;
@@ -100,7 +104,12 @@ public class ClientConnection  {
 	private static final int DEFAULT_LOGON_TIMEOUT_SEC = 30;
 	private static final int HEARTBEAT_INTERVAL = 30;
 	private static final EncryptMethodType ENCRYPT_METHOD_TYPE = EncryptMethodType.NONE;
-
+	
+	private int restarTimeWait =  60*3;
+	
+	private AtomicBoolean isStreamEnabled = new AtomicBoolean(false);
+	private AtomicBoolean isStreamRuning = new AtomicBoolean(false);
+	
 	private String apiKey;
 	private String username;
 	private String password;
@@ -113,9 +122,8 @@ public class ClientConnection  {
 	private MessageBlockWriterFactory messageBlockWriterFactory;
 	private MessageBlockReaderFactory messageBlockReaderFactory;
 	private volatile boolean isLoggedOn = false;
-	private boolean isConnected = false;
+	private volatile boolean isConnected = false;
 	private boolean isMessageLoggingEnabled = true;
-	private Logger logger = Logger.getLogger(this.getClass());
 	private Thread inboundMessageRouter;
 	private Endpoint endpoint;
 	private TemplateRegistry templateRegistry;
@@ -133,6 +141,8 @@ public class ClientConnection  {
 	private Thread heartbeatMonitor;
 	private ProgressBar progressBar = new ProgressBar();
 
+	private MetricUpdateCallback streamRefreshCallback = null;
+	private SimpleMetricUpdateCallback streamRefreshCallbackPureData = null;
 
 	private long idClient;
 
@@ -154,8 +164,6 @@ public class ClientConnection  {
 		return idClient;
 	}
 
-
-
 	public ClientConnection() {
 		setMessageLoggingEnabled(false);
 		setTemplatesFileName(TEMPLATES_FILE);
@@ -163,7 +171,6 @@ public class ClientConnection  {
 		idClient = idClientGenerator.getAndIncrement();
 
 	}
-
 
 	public long getIdC() {
 		return idClient;
@@ -175,15 +182,13 @@ public class ClientConnection  {
 	 * 
 	 * @throws IOException
 	 * @throws FastConnectionException
-	 */
+	 */ 
 	public void start() throws IOException, FastConnectionException {
-
-		logger.setLevel(Level.ERROR);
 
 		// load connection properties from persistent storage
 		endpoint = new TcpEndpoint(host, port);
 
-		//create XML message loader template and populate its parameters
+		// create XML message loader template and populate its parameters
 		XMLMessageTemplateLoader loader = new XMLMessageTemplateLoader();
 		loader.setLoadTemplateIdFromAuxId(true);
 
@@ -194,7 +199,7 @@ public class ClientConnection  {
 		Context context = new Context();
 		context.setTemplateRegistry(templateRegistry);
 
-		// create message block reader & writer 
+		// create message block reader & writer
 		messageBlockWriterFactory = new MessageBlockWriterFactory(Variant.DEFAULT, 0, false);
 		messageBlockReaderFactory = new MessageBlockReaderFactory(Variant.DEFAULT, 0, false);
 
@@ -211,7 +216,7 @@ public class ClientConnection  {
 
 		isConnected = true;
 
-		logger.info("Client connected to endpoint " + endpoint);
+		// Client connected to endpoint
 
 		clientMessageQueue = new LinkedBlockingDeque<ClientMessage>();
 		serviceMessageQueue = new LinkedBlockingDeque<ServiceMessage>();
@@ -227,6 +232,23 @@ public class ClientConnection  {
 	/**
 	 * Closes existing open connection to the server.
 	 */
+	/*
+	 * public void stop() {
+	 * 
+	 * if (isConnected) {
+	 * 
+	 * try { if (isLoggedOn()) { logout(30); }
+	 * 
+	 * } catch (Exception e) { throw new
+	 * RuntimeException(MessageStrings.ERROR_STOP_CLIENT, e); }
+	 * 
+	 * isConnected = false;
+	 * 
+	 * }
+	 * 
+	 * }
+	 */
+
 	public void stop() {
 
 		if (isConnected) {
@@ -368,7 +390,7 @@ public class ClientConnection  {
 			setPort(PORT_NUMBER);
 	}
 
-	public MethodResult start(String username, String password, String apiKey, String remoteHostName) {
+	public Metric start(String username, String password, String apiKey, String remoteHostName) {
 
 		clearStatus();
 		stop();
@@ -387,44 +409,44 @@ public class ClientConnection  {
 		setHost(remoteHostName);
 
 		try {
-			start();
+			return restart();
 		} catch (Exception e) {
 			this.stop();
-			return new MethodResult(MessageStrings.ERROR_CONNECT);
-		}
-		try {
-			logon(LOGON_TIMEOUT_SECONDS);
-		} catch (Exception e) {
-			stop();
 			if (e.getMessage().contains(":"))
-				return new MethodResult(e.getMessage().split(":")[1]);
+				return new Metric(e.getMessage().split(":")[1]);
 			else
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
+			//return new Metric(MessageStrings.ERROR_CONNECT);
 		}
+//		try {
+//			logon(LOGON_TIMEOUT_SECONDS);
+//		} catch (Exception e) {
+//			stop();
+//			
+//		}
 
-		return new MethodResult();
+		//return new Metric();
 	}
 
 	private void clearStatus() {
 		callStatus.setLength(0);
 	}
 
-	public MethodResult restart() {
+	public Metric restart() {
 		int totalTime = 0;
-
-		for (int i = 1; i <= RESTART_ATTEMPTS_COUNT; i++) {
+		 
+		int waitTime=-1;
+		while(totalTime<restarTimeWait){
+			waitTime++;
 			stop();
 			try {
-				if (i > 1) {
-					int waitTime = (int) (i * (5 + Math.random() * 2));
-					totalTime += waitTime;
-					if (totalTime > TIME_WAIT_TOPRINT)
-						Console.write(MessageStrings.CONNECTING);
-
-					waitAndDots(waitTime, totalTime);
-
-				}
-
+					if(waitTime>=1){
+						totalTime += waitTime;
+						if (totalTime > TIME_WAIT_TOPRINT)
+							Console.write(MessageStrings.CONNECTING);
+	
+						waitAndDots(waitTime, totalTime);
+					}
 			} catch (InterruptedException e) {
 			}
 
@@ -441,20 +463,20 @@ public class ClientConnection  {
 				continue;
 			} catch (Exception e) {
 				stop();
-				return new MethodResult(e.getMessage());
+				return new Metric(e.getMessage());
 			}
 			if (isLoggedOn()) {
 				if (totalTime > TIME_WAIT_TOPRINT)
 					Console.writeln(MessageStrings.OK);
 
-				return new MethodResult();
+				return new Metric();
 			}
 
 		}
 		if (!isLoggedOn()) {
-			return new MethodResult(MessageStrings.ERROR_CONNECT);
+			return new Metric(MessageStrings.ERROR_CONNECT);
 		}
-		return new MethodResult();
+		return new Metric();
 
 	}
 
@@ -462,7 +484,7 @@ public class ClientConnection  {
 		if (totalTime > TIME_WAIT_TOPRINT) {
 			Console.write(".");
 		}
-		Thread.sleep(sec);
+		Thread.sleep(sec*MILLISEC_IN_SECOND);
 	}
 
 	public double getDataVolume(double[] price, int[] timeSec) {
@@ -485,10 +507,14 @@ public class ClientConnection  {
 		return asciiEncoder.canEncode(v);
 	}
 
-	public MethodResult validateStringRequest(String requestString) throws Exception {
+	public Metric validateStringRequest(String requestString) throws Exception {
+		
+		if (isStreamEnabled.get()) {
+			return new Metric(STREAM_IS_ALREADY_RUNNING);
+		}
 
 		if (!isPureAscii(requestString))
-			return new MethodResult(MessageStrings.NON_ASCII);
+			return new Metric("Request " + MessageStrings.NON_ASCII);
 
 		String[] paramList = new String[0];
 
@@ -505,47 +531,21 @@ public class ClientConnection  {
 
 			paramList = gson.fromJson(response.getMsgBody(), mapType);
 		} else {
-			return new MethodResult(response.getMsgBody());
+			return new Metric(response.getMsgBody());
 		}
 
-		MethodResult result = new MethodResult();
+		Metric result = new Metric();
 		ArrayCache pL = new ArrayCache(paramList);
 		result.setData("positions", pL);
 		return result;
 	}
 
-	public MethodResult callEstimator(String estimatorType, double[] price, int timeStep) throws Exception {
-		int[] timeSec = new int[price.length];
-		for (int i = 0; i < price.length; i++)
-			timeSec[i] = i * timeStep + 1;
-		return callEstimator(estimatorType, price, timeSec);
-	}
+	public Metric transmitQuantity(String assetName, int[] dataInt, long[] time) throws Exception {
 
-	public MethodResult transmitHistoryPrice(String assetName) throws Exception {
+		if (isStreamEnabled.get()) {
 
-		String requestType = "HISTORY_PRICE";
-		String request = assetName;
-
-		Message msg = ServerResponseMessageFactory.createTransmitDataRequest(getTemplateRegistry(), requestType, request,
-				getOutboundMsgSequenceNumber(), System.currentTimeMillis());
-		Message responseMsg = sendAndAwaitResponse(msg, DATA_TRANSMIT_TIMEOUT_SECONDS_ESTIMATE);
-		TransmitDataResponse response = ServerResponseMessageParser.parseTransmitDataResponse(responseMsg);
-
-		if (response.getMsgType().equals("OK")) {
-
-			MethodResult result = new MethodResult();
-			result.setMessage(response.getMsgBody());
-
-			return result;
-
-		} else {
-			throw new Exception(response.getMsgBody());
+			return new Metric(STREAM_IS_ALREADY_RUNNING);
 		}
-
-	}
-
-	public MethodResult transmitQuantity(String assetName, int[] dataInt, long[] time) throws Exception {
-
 		boolean isFirstBlock = true;
 		int position = 0;
 
@@ -582,7 +582,7 @@ public class ClientConnection  {
 			long[] timeTransmit = new long[time.length % MAX_BLOCK_DIMENSION];
 
 			System.arraycopy(time, position, timeTransmit, 0, time.length % MAX_BLOCK_DIMENSION);
-			System.arraycopy(dataInt, position, dataTransmit, 0, time.length % MAX_BLOCK_DIMENSION);
+			System.arraycopy(dataInt, position, dataTransmit, 0, dataInt.length % MAX_BLOCK_DIMENSION);
 
 			String type = "QUANTITY";
 			if (!isFirstBlock) {
@@ -603,14 +603,36 @@ public class ClientConnection  {
 
 		}
 
-		MethodResult result = new MethodResult();
+		Metric result = new Metric();
 		result.setMessage("NON");
 
 		return result;
 	}
 
-	public MethodResult transmitUserPrice(String assetName, float[] dataFloat, long[] time) throws Exception {
+	public boolean transmitStreamQuantity(String assetName, int quantity, long time) throws Exception {
 
+		if(!isStreamRuning.get())
+			return false;
+		
+	
+		
+		int[] dataTransmit = new int[] { quantity };
+		long[] timeTransmit = new long[] { time };
+
+		String type = "QUANTITY:stream";
+
+		String request = assetName;
+		Message msg = ServerResponseMessageFactory.createTransmitDataRequest(getTemplateRegistry(), type, request, dataTransmit, timeTransmit,
+				getOutboundMsgSequenceNumber(), System.currentTimeMillis());
+
+		send(msg);
+		return true;
+	}
+
+	public Metric transmitUserPrice(String assetName, float[] dataFloat, long[] time) throws Exception {
+		if (isStreamEnabled.get()) {
+			return new Metric(STREAM_IS_ALREADY_RUNNING);
+		}
 		boolean isFirstBlock = true;
 		int position = 0;
 
@@ -670,31 +692,48 @@ public class ClientConnection  {
 
 		}
 
-		MethodResult result = new MethodResult();
+		Metric result = new Metric();
 		result.setMessage("NON");
 
 		return result;
 
 	}
 
-	public MethodResult transmitDataList(String fromTime, String toTime, ArrayList<String> dataList, String windowLength, String priceSamplingInterval, String momentsModel )
-			throws Exception {
+	public Metric transmitDataList(String fromTime, String toTime, ArrayList<String> dataList, String windowLength, String priceSamplingInterval,
+				String momentsModel, String trainingPeriodEnabled) throws Exception {
+		
+		if (isStreamEnabled.get()) {
+			return new Metric(STREAM_IS_ALREADY_RUNNING);
+		}
+
+		for (String e : dataList){
+			if (!isPureAscii(e))
+				return new Metric("Position name " + MessageStrings.NON_ASCII);
+			
+			boolean isHystoryPrice = e.contains("h-") || e.contains("hI-");
+			
+			if(isHystoryPrice && fromTime.contains("#"))
+				return new Metric("fromTime is not set");
+			
+			if(isHystoryPrice && toTime.contains("#"))
+				return new Metric("toTime is not set");
+		}
+
 		timeDataFast.reset();
 		timeDataTransmit.reset();
 
 		String requestType = "CHECK_DATA";
 
-		TransmitDataListMessage dataListMessage = new TransmitDataListMessage(dataList, windowLength, fromTime, toTime, priceSamplingInterval, momentsModel);
+		TransmitDataListMessage dataListMessage = new TransmitDataListMessage(dataList, windowLength, fromTime, toTime, priceSamplingInterval, momentsModel, trainingPeriodEnabled);
 
 		Gson gson = new Gson();
 		Type mapType = new TypeToken<TransmitDataListMessage>() {
 		}.getType();
 		String request = gson.toJson(dataListMessage, mapType);
 
-
 		timeDataFast.start();
-		Message msg = ServerResponseMessageFactory.createTransmitDataRequest(getTemplateRegistry(), requestType, request,
-				getOutboundMsgSequenceNumber(), System.currentTimeMillis());
+		Message msg = ServerResponseMessageFactory.createTransmitDataRequest(getTemplateRegistry(), requestType, request, getOutboundMsgSequenceNumber(),
+				System.currentTimeMillis());
 		timeDataFast.stop();
 		timeDataTransmit.start();
 		Message responseMsg = sendAndAwaitResponse(msg, DATA_TRANSMIT_TIMEOUT_SECONDS_ESTIMATE);
@@ -706,254 +745,22 @@ public class ClientConnection  {
 
 		if (response.getMsgType().equals("OK")) {
 
-			MethodResult result = new MethodResult();
+			Metric result = new Metric();
 			result.setMessage(response.getMsgBody());
 
 			return result;
 
 		} else {
-			return new MethodResult(response.getMsgBody());
+			return new Metric(response.getMsgBody());
 		}
 	}
 
-	public MethodResult callEstimator(String estimatorType, double[] price, int[] timeSec) {
-		double[] result = null;
+	public Metric estimateEstimator(String metricType) throws Exception {
 
-		estimatorType = "[" + estimatorType + "]";
-
-		if (progressBarMax == 0) {
-			progressBarMax = price.length * groupSize;
-			progressBarI = 0;
-			progressBar.reset();
+		if (isStreamEnabled.get()) {
+			return new Metric(STREAM_IS_ALREADY_RUNNING);
 		}
-		if (progressBarMax != 0 && progressBarI == 0) {
-			progressBar.reset();
-		}
-
-		int curentBlockDimension = MAX_BLOCK_DIMENSION * BLOCK_DIMENSION_DECREASE_STEP;
-		if (!isLoggedOn()) {
-			curentBlockDimension *= BLOCK_DIMENSION_DECREASE_STEP;
-		}
-		while (true) {
-			curentBlockDimension /= BLOCK_DIMENSION_DECREASE_STEP;
-			if (curentBlockDimension < 2)
-				return new MethodResult(MessageStrings.SERVER_TIME_OUT);
-
-			result = null;
-			progressBar.printCompletionStatus(progressBarI, progressBarMax);
-
-			if (price.length == 0) {
-				progressBarMax = 0;
-				return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE);
-			}
-
-			if (timeSec.length != price.length && timeSec.length != 0) {
-				progressBarMax = 0;
-				return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
-			}
-
-			if (timeSec.length == 0) {
-				timeSec = new int[price.length];
-				for (int i = 0; i < price.length; i++)
-					timeSec[i] = i + 1;
-			}
-
-			int maxBlockDimension = curentBlockDimension;// / price.length;
-			double ttt = price.length;
-			ttt = ttt / maxBlockDimension + 0.5;
-			int numberBlocks = (int) ttt;
-			int pointer = 0;
-
-			for (int i = 0; i < numberBlocks - 1; i++) {
-				double[] priceBlock = new double[maxBlockDimension];
-				int[] timeSecBlock;
-				timeSecBlock = new int[maxBlockDimension];
-				PriceDataSet data;
-				{
-					if (timeSec.length != price.length) {
-						progressBarMax = 0;
-						return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
-					}
-					for (int j = 0, localPointer = pointer; j < maxBlockDimension; j++, localPointer++) {
-						priceBlock[j] = price[localPointer];
-						timeSecBlock[j] = timeSec[localPointer];
-					}
-
-					try {
-						data = new PriceDataSet(priceBlock, timeSecBlock);
-					} catch (Exception e) {
-						return new MethodResult(e.getMessage());
-					}
-				}
-
-				double[] resultBlock = new double[] {};
-
-				try {
-					clearStatus();
-					Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  estimatorType, "false",
-							priceBlock, timeSecBlock, getOutboundMsgSequenceNumber(), System.currentTimeMillis());
-
-					Message responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
-
-					NonparametricComputeResponse response = ServerResponseMessageParser.parseNonparametricComputeResponse(responseMsg);
-
-					if (response.getMsgType().equals("OK")) {
-						resultBlock = response.getData();
-					} else {
-						throw new Exception(response.getMsgBody());
-					}
-
-				}
-
-				catch (ConnectFailedException e) {
-
-					MethodResult isRestarted = restart();
-					if (isRestarted.hasError()) {
-						return new MethodResult(isRestarted.getErrorMessage());
-					}
-					numberBlocks = -1;
-					continue;
-
-				}
-
-				catch (Exception e) {
-
-					return new MethodResult(e.getMessage());
-
-				}
-
-				if (result == null) {
-					result = new double[price.length];
-				}
-
-				{
-
-					for (int j = 0, localPointer = pointer; j < resultBlock.length; j++, localPointer++)
-						result[localPointer] = resultBlock[j];
-
-				}
-
-				pointer += maxBlockDimension;
-
-				progressBarI += resultBlock.length;
-				progressBar.printCompletionStatus(progressBarI, progressBarMax);
-
-			}
-
-			if (numberBlocks == -1)
-				continue;
-
-			// This is last Block !!!!!!!!!!!!!!!!!
-
-			double[] priceBlock = new double[price.length - pointer];
-			int[] timeSecBlock;
-			timeSecBlock = new int[price.length - pointer];
-
-			PriceDataSet data;
-
-			{
-
-				if (timeSec.length != price.length) {
-					progressBarMax = 0;
-					return new MethodResult(MessageStrings.WRONG_VECTOR_LEN_PRICE_AND_TIME);
-
-				}
-
-				for (int j = 0, localPointer = pointer; j < price.length - pointer; j++, localPointer++) {
-					priceBlock[j] = price[localPointer];
-					timeSecBlock[j] = timeSec[localPointer];
-				}
-
-				try {
-					 data = new PriceDataSet(priceBlock, timeSecBlock);
-				} catch (Exception e) {
-
-					return new MethodResult(e.getMessage());
-
-				}
-			}
-
-			double[] resultBlock = new double[] {};
-
-			try {
-
-				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  estimatorType, "true", priceBlock,
-						timeSecBlock, getOutboundMsgSequenceNumber(), System.currentTimeMillis());
-
-				Message responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
-
-				NonparametricComputeResponse response = ServerResponseMessageParser.parseNonparametricComputeResponse(responseMsg);
-
-				if (response.getMsgType().equals("OK")) {
-
-					resultBlock = response.getData();
-				}
-
-				else {
-
-					throw new Exception(response.getMsgBody());
-				}
-
-			} catch (ConnectFailedException e) {
-
-				MethodResult isRestarted = restart();
-				if (isRestarted.hasError()) {
-					return new MethodResult(isRestarted.getErrorMessage());
-				}
-				numberBlocks = -1;
-				continue;
-
-			}
-
-			catch (Exception e) {
-
-				return new MethodResult(e.getMessage());
-
-			}
-
-			if (result == null) {
-				result = new double[price.length];
-			}
-
-			{
-
-				for (int j = 0, localPointer = pointer; j < resultBlock.length; j++, localPointer++)
-					result[localPointer] = resultBlock[j];
-
-			}
-
-			progressBarI += resultBlock.length;
-			progressBar.printCompletionStatus(progressBarI, progressBarMax);
-
-			if (progressBarI == progressBarMax) {
-				createCallGroup(1);
-			}
-
-			break;
-		}
-
-		ArrayCache resultCache;
-		ArrayCache resultTime;
-		try {
-			resultCache = new ArrayCache(result);
-
-			resultTime = new ArrayCache(timeSec);
-
-		} catch (IOException e) {
-			return new MethodResult(e.getMessage());
-
-		}
-
-		MethodResult resultA = new MethodResult();
-		resultA.setData("value", resultCache);
-		resultA.setData("time", resultTime);
-
-		return resultA;
-	}
-
-
-	public MethodResult estimateEstimator(String metricType) throws Exception {
-
+		
 		HashMap<String, String> info = new HashMap<String, String>();
 		ArrayCache resultValueList = null;
 		ArrayCache resultTimeList = null;
@@ -964,8 +771,7 @@ public class ClientConnection  {
 
 		int[] dimensions = null;
 		progressBar.printCompletionStatus(percent);
-		
-		
+
 		while (isRun) {
 
 			clearStatus();
@@ -975,29 +781,18 @@ public class ClientConnection  {
 				resultValueList = new ArrayCache(ArrayCacheType.DOUBLE_VECTOR);
 				resultTimeList = new ArrayCache(ArrayCacheType.LONG_VECTOR);
 
-				
-				//Gson gson = new Gson();
+				// Gson gson = new Gson();
 
-								
-				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  metricType, "",
-						new double[1], new int[1], getOutboundMsgSequenceNumber(), System.currentTimeMillis());
-
-
+				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(), metricType, "", new double[1], new int[1],
+						getOutboundMsgSequenceNumber(), System.currentTimeMillis());
 
 				responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
-				
-				
-						
-
-				
 
 				isFirstBlock = false;
 			} else {
 
-				
-				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(),  metricType, "#NEXT#",
-						new double[1], new int[1], getOutboundMsgSequenceNumber(), System.currentTimeMillis());
-
+				Message msg = ClientRequestMessageFactory.createNonparametricComputeRequest(getTemplateRegistry(), metricType, "#NEXT#", new double[1],
+						new int[1], getOutboundMsgSequenceNumber(), System.currentTimeMillis());
 
 				responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
 
@@ -1040,7 +835,7 @@ public class ClientConnection  {
 		if (dimensions != null)
 			resultValueList.setDimensions(dimensions);
 
-		MethodResult result = new MethodResult();
+		Metric result = new Metric();
 		result.setData("value", resultValueList);
 		result.setData("time", resultTimeList);
 		result.setInfo(info);
@@ -1049,11 +844,46 @@ public class ClientConnection  {
 	}
 
 	
-	public MethodResult estimateTransactional(String metricType, String indexPosition, ArrayList<String> positionList, String params) throws Exception {
+	
+
+	public void stopStream() {
+		isStreamEnabled.set(false);
+		stop();
+		batchMetricKeys = null;
+		//streamRefreshCallback = null;
+		//streamRefreshCallbackPureData =null;
+		
+	}
+
+	private List<String> batchMetricKeys = null;
+
+	public List<String> getBatchMetricKeys() {
+		return batchMetricKeys;
+	}
+
+	public void setBatchMetricKeys(List<String> batchMetricKeys, long portfolioID) {
+		this.batchMetricKeys = new ArrayList<String>();
+
+		for (String e : batchMetricKeys) {
+			if (e.charAt(0) == '{' && e.length() > 1) {
+				this.batchMetricKeys.add("{" + "portfolioID:" + portfolioID + ", request:" + e);
+			} else
+				this.batchMetricKeys.add(e);
+		}
+
+		// this.batchMetricKeys = batchMetricKeys;
+	}
+
+	public Metric estimateTransactional(String metricType, String indexPosition, ArrayList<String> positionList, String params) throws Exception {
+
+		if (metricType.contains("stream")) {
+			if (isStreamEnabled.get()) {
+				return new Metric(STREAM_IS_ALREADY_RUNNING);
+			}
+			isStreamEnabled.set(true);
+		}
 
 		HashMap<String, String> info = new HashMap<String, String>();
-		ArrayCache resultValueList = null;
-		ArrayCache resultTimeList = null;
 
 		boolean isRun = true;
 		boolean isFirstBlock = true;
@@ -1061,16 +891,20 @@ public class ClientConnection  {
 
 		int[] dimensions = null;
 		progressBar.printCompletionStatus(percent);
-		
-		
+
+		ArrayCache batchValues[] = null;
+		ArrayCache batchValuesTime[] = null;
+
+		// ArrayCache resultValueList = new
+		// ArrayCache(ArrayCacheType.DOUBLE_VECTOR);
+		// ArrayCache resultTimeList = new
+		// ArrayCache(ArrayCacheType.LONG_VECTOR);
+
 		while (isRun) {
 
 			clearStatus();
 			Message responseMsg;
 			if (isFirstBlock) {
-
-				resultValueList = new ArrayCache(ArrayCacheType.DOUBLE_VECTOR);
-				resultTimeList = new ArrayCache(ArrayCacheType.LONG_VECTOR);
 
 				if (indexPosition.length() != 0)
 					positionList.add(0, indexPosition);
@@ -1078,14 +912,21 @@ public class ClientConnection  {
 				Gson gson = new Gson();
 
 				String request = gson.toJson(positionList);
-
-
-				Message msg = ClientRequestMessageFactory.createTransactionalPortfolioComputeRequest(getTemplateRegistry(), metricType, request,
-						params, getOutboundMsgSequenceNumber(), System.currentTimeMillis());
+				
+				if(debugModeEnabled){
+					Console.writeln("Request--->");
+					Console.writeln(metricType);
+					Console.writeln(request);
+					Console.writeln(params);
+					Console.writeln(">---");
+				}
+				
+				
+				Message msg = ClientRequestMessageFactory.createTransactionalPortfolioComputeRequest(getTemplateRegistry(), metricType, request, params,
+						getOutboundMsgSequenceNumber(), System.currentTimeMillis());
 
 				responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
 
-				isFirstBlock = false;
 			} else {
 
 				Message msg = ClientRequestMessageFactory.createTransactionalPortfolioComputeRequest(getTemplateRegistry(), metricType, "#NEXT#", "",
@@ -1106,16 +947,123 @@ public class ClientConnection  {
 				CalculationStatusMessage statusMessg = gson.fromJson(response.getMsgType(), mapType);
 
 				dimensions = statusMessg.getDimension();
+				if (dimensions.length == 0)
+					dimensions = new int[] { 1 };
 
 				float[] data = response.getDataFloat();
 				long[] time = response.getTime();
+				
+				if(debugModeEnabled){
+					
+					if(data.length>0)
+						Console.writeln("RECEIVED DATA BLOCK("+ data.length+"): "+data[0]+"\t"+data[data.length-1]);
+				
+					
+					if(time.length>0)
+						Console.writeln("RECEIVED TIME BLOCK("+ time.length+"): "+ 
+					  (new Timestamp(time[0] +DateTimeUtil.CLIENT_TIME_DELTA))
+							+"\t"+
+							(new Timestamp(time[time.length-1] +DateTimeUtil.CLIENT_TIME_DELTA)));
+					
+				
+					
+				}
 
-				resultValueList.writeAsDouble(data);
+				if (isFirstBlock) {
 
-				resultTimeList.write(time);
+					// resultValueList = new
+					// ArrayCache(ArrayCacheType.DOUBLE_VECTOR);
+					// resultTimeList = new
+					// ArrayCache(ArrayCacheType.LONG_VECTOR);
+
+					// resultValueList.writeAsDouble(data);
+					// resultTimeList.write(time);
+
+					// resultValueList.setDimensions(dimensions);
+
+					// batchValues =
+					// ArrayCache.splitBatchDouble(resultValueList);
+					// -----------------
+
+					batchValues = new ArrayCache[dimensions.length];
+					for (int i = 0; i < dimensions.length; i++) {
+						if (dimensions[i] == 1)
+							batchValues[i] = new ArrayCache(ArrayCacheType.DOUBLE_VECTOR);
+						else
+							batchValues[i] = new ArrayCache(ArrayCacheType.DOUBLE_MATRIX);
+
+						batchValues[i].setDimensions(new int[] { dimensions[i] });
+					}
+
+					batchValuesTime = new ArrayCache[batchValues.length];
+					for (int k = 0; k < batchValues.length; k++)
+						batchValuesTime[k] = new ArrayCache(ArrayCacheType.LONG_VECTOR);
+
+					for (int k = 0; k < batchValues.length; k++) {
+						batchValuesTime[k].lockToWrite();
+						batchValues[k].lockToWrite();
+					}
+
+					int len = 0;
+					while (len < data.length) {
+						for (int k = 0; k < dimensions.length; k++) {
+							for (int m = 0; m < dimensions[k]; m++) {
+								batchValues[k].writeNextDouble(data[len]);
+								len++;
+							}
+						}
+					}
+
+					for (int k = 0; k < batchValues.length; k++)
+						batchValuesTime[k].writeNextLong(time);
+
+					for (int k = 0; k < batchValues.length; k++) {
+						batchValuesTime[k].unlockToWrite();
+						batchValues[k].unlockToWrite();
+					}
+
+					isFirstBlock = false;
+
+				} else {
+
+					for (int k = 0; k < batchValues.length; k++) {
+						batchValuesTime[k].lockToWrite();
+						batchValues[k].lockToWrite();
+					}
+
+					for (int k = 0; k < batchValues.length; k++)
+						batchValuesTime[k].writeNextLong(time);
+
+					int len = 0;
+					while (len < data.length) {
+						for (int k = 0; k < dimensions.length; k++) {
+							for (int m = 0; m < dimensions[k]; m++) {
+								batchValues[k].writeNextDouble(data[len]);
+								len++;
+							}
+						}
+					}
+
+					for (int k = 0; k < batchValues.length; k++) {
+						batchValuesTime[k].unlockToWrite();
+						batchValues[k].unlockToWrite();
+					}
+
+				}
 
 				percent = Double.valueOf(response.getMsgBody());
 				progressBar.printCompletionStatus(percent);
+
+				if (isStreamEnabled.get() && percent >= 1) {
+
+					StreamWoker streamWoker = new StreamWoker(batchValues, batchValuesTime, dimensions, streamRefreshCallback, streamRefreshCallbackPureData);
+					new Thread(streamWoker).start();
+					// streamWoker.run();
+
+					info = statusMessg.getResultInfo();
+					isRun = false;
+
+				}
 
 				if (response.getMsgType().contains("STOP")) {
 
@@ -1124,23 +1072,22 @@ public class ClientConnection  {
 					isRun = false;
 				}
 			} else {
-
+				isStreamEnabled.set(false);
 				throw new Exception(response.getMsgBody());
 			}
 		}
 
-		if (dimensions != null)
-			resultValueList.setDimensions(dimensions);
-
-		MethodResult result = new MethodResult();
-		result.setData("value", resultValueList);
-		result.setData("time", resultTimeList);
+		Metric result = new Metric();
+		result.setData("values", batchValues);
+		result.setData("times", batchValuesTime);
 		result.setInfo(info);
-
+		
+		
 		return result;
+
 	}
 
-	public MethodResult getAllSymbolsList() throws Exception {
+	public Metric getAllSymbolsList() throws Exception {
 
 		Message responseMsg;
 		Message msg = ClientRequestMessageFactory.createTransactionalPortfolioComputeRequest(getTemplateRegistry(), "ALL_SYMBOLS", "", "",
@@ -1149,7 +1096,7 @@ public class ClientConnection  {
 		responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
 
 		TransmitDataRequest response = ServerResponseMessageParser.parseTransmitDataRequest(responseMsg);
-		MethodResult result = new MethodResult();
+		Metric result = new Metric();
 
 		if (response.getMsgType().contains("OK")) {
 
@@ -1157,11 +1104,11 @@ public class ClientConnection  {
 
 			data = Snappy.uncompress(data, 0, data.length);
 			Map<String, String[]> map = (Map<String, String[]>) SerializationUtils.deserialize(data);
-			
+
 			ArrayCache id = new ArrayCache(map.get("id"));
 			ArrayCache description = new ArrayCache(map.get("description"));
 			ArrayCache exchange = new ArrayCache(map.get("exchange"));
-			
+
 			result.setData("id", id);
 			result.setData("description", description);
 			result.setData("exchange", exchange);
@@ -1174,7 +1121,7 @@ public class ClientConnection  {
 		return result;
 	}
 
-	public MethodResult getComputeTimeLeft() {
+	public Metric getComputeTimeLeft() {
 
 		for (int i = 0; i < 3; i++) {
 			Message responseMsg;
@@ -1186,7 +1133,7 @@ public class ClientConnection  {
 				responseMsg = sendAndAwaitResponse(msg, USER_LAYER_TIMEOUT_SECONDS_ESTIMATE);
 
 				TransmitDataRequest response = ServerResponseMessageParser.parseTransmitDataRequest(responseMsg);
-				MethodResult result = new MethodResult();
+				Metric result = new Metric();
 
 				if (response.getMsgType().contains("OK")) {
 
@@ -1205,25 +1152,25 @@ public class ClientConnection  {
 
 			} catch (Exception e) {
 
-				MethodResult result = processException(e);
+				Metric result = processException(e);
 				if (result == null)
 					continue;
 				return result;
 			}
 
 		}
-		return new MethodResult(MessageStrings.FAILED_SERVER_TIME_OUT);
+		return new Metric(MessageStrings.FAILED_SERVER_TIME_OUT);
 
 	}
 
-	private MethodResult processException(Exception e) {
+	private Metric processException(Exception e) {
 
 		if (e instanceof ConnectFailedException) {
 
-			MethodResult isRestarted = restart();
+			Metric isRestarted = restart();
 			if (isRestarted.hasError()) {
 				resetProgressBar();
-				return new MethodResult(isRestarted.getErrorMessage());
+				return new Metric(isRestarted.getErrorMessage());
 			}
 
 			return null;
@@ -1231,10 +1178,10 @@ public class ClientConnection  {
 
 		if (e.getMessage() == null || e.getMessage().contains("No data in cache") || e.getMessage().contains("null")) {
 
-			MethodResult isRestarted = restart();
+			Metric isRestarted = restart();
 			if (isRestarted.hasError()) {
 				resetProgressBar();
-				return new MethodResult(isRestarted.getErrorMessage());
+				return new Metric(isRestarted.getErrorMessage());
 			}
 
 			return null;
@@ -1243,11 +1190,11 @@ public class ClientConnection  {
 
 		if (e.getMessage() == null) {
 			Console.writeStackTrace(e);
-			return new MethodResult(MessageStrings.ERROR_101);
+			return new Metric(MessageStrings.ERROR_101);
 		}
 
 		resetProgressBar();
-		return new MethodResult(e.getMessage());
+		return new Metric(e.getMessage());
 
 	}
 
@@ -1281,12 +1228,50 @@ public class ClientConnection  {
 
 	}
 
+	public void send(Message request) throws Exception {
+
+		if (!isConnected)
+			throw new ConnectFailedException();
+
+		try {
+			out.writeMessage(request);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ConnectFailedException("Error writing to stream");
+		}
+
+	}
+
+	public Message awaitResponse() throws Exception {
+
+		if (!isConnected)
+			throw new ConnectFailedException();
+
+		ClientMessage clientMessage = clientMessageQueue.poll(200, TimeUnit.DAYS);
+		clientMessageQueue.clear();
+
+		if (clientMessage == null) {
+			throw new ConnectFailedException();
+		}
+		if (clientMessage == null || clientMessage.isEmpty()) {
+
+			throw new ConnectFailedException();
+		} else if (clientMessage.isRejected()) {
+
+			Reject reject = ServerResponseMessageParser.parseReject(clientMessage.getMessage());
+			throw new Exception(reject.getText());
+		}
+
+		return clientMessage.getMessage();
+
+	}
+
 	private void sendHeartbeat(String testReqId) {
 		Message logoutMsg = ClientRequestMessageFactory.createHeartbeat(templateRegistry, nextOutboundMsgSequenceNumber(), testReqId);
 		out.writeMessage(logoutMsg);
 	}
-	
-	private TemplateRegistry getTemplateRegistry() throws Exception {
+
+	public TemplateRegistry getTemplateRegistry() throws Exception {
 		if (templateRegistry == null) {
 			throw new ConnectFailedException();
 		}
@@ -1299,15 +1284,174 @@ public class ClientConnection  {
 		return fastMsgType;
 	}
 
+	private class StreamWoker implements Runnable {
+
+		private ArrayCache batchValues[];
+		private ArrayCache batchValuesTime[];
+		private int[] dimensions;
+		private MetricUpdateCallback streamRefreshCallback = null;
+		private SimpleMetricUpdateCallback streamRefreshCallbackPureData = null;
+
+		public StreamWoker(ArrayCache[] batchValues, ArrayCache[] batchValuesTime, int dimensions[], MetricUpdateCallback streamRefreshCallback,
+				SimpleMetricUpdateCallback streamRefreshCallbackPureData) {
+			this.batchValues = batchValues;
+			this.batchValuesTime = batchValuesTime;
+			this.dimensions = dimensions;
+			this.streamRefreshCallback = streamRefreshCallback;
+			this.streamRefreshCallbackPureData = streamRefreshCallbackPureData;
+		}
+
+		@Override
+		public void run() {
+
+			Console.writeln("Start stream data");
+			isStreamRuning.set(true);
+			String stopReason = "terminated by user";
+			while (isStreamEnabled.get() && !Thread.interrupted()) {
+				try {
+
+					Message responseMsg = awaitResponse();
+
+					FastMessageType responseMessageType = getMessageType(responseMsg);
+					if (responseMessageType == FastMessageType.LOGOUT) {
+						clientMessageQueue.offer(new ClientMessage(responseMsg));
+
+						break;
+					}
+
+					TransmitDataRequest response = ServerResponseMessageParser.parseTransmitDataRequest(responseMsg);
+
+					if (response.getMsgType().contains("OK")) {
+
+						// Gson gson = new Gson();
+						// Type mapType = new
+						// TypeToken<CalculationStatusMessage>() {
+						// }.getType();
+
+						// CalculationStatusMessage statusMessg =
+						// gson.fromJson(response.getMsgType(), mapType);
+
+						float[] data = response.getDataFloat();
+						long[] time = response.getTime();
+
+						if (data.length == 0)
+							continue;
+
+						for (int k = 0; k < batchValues.length; k++) {
+							batchValuesTime[k].lockToWrite();
+							batchValues[k].lockToWrite();
+						}
+
+						int len = 0;
+
+						// while (len < data.length)
+						for (int t = 0; t < time.length; t++) {
+							for (int k = 0; k < dimensions.length; k++) {
+
+//								boolean flag = true;
+//								for (int m = 0; m < dimensions[k]; m++) {
+//									flag = flag && Double.isNaN(data[len + m]);
+//								}
+//
+//								if (flag){
+//									len+=dimensions[k];
+//									continue;
+//								}
+
+								for (int m = 0; m < dimensions[k]; m++) {
+
+									batchValues[k].writeNextDouble(data[len]);
+
+									len++;
+								}
+								batchValuesTime[k].writeNextLong(time[t]);
+
+							}
+
+						}
+
+						// for (int k = 0; k < batchValues.length; k++)
+						// batchValuesTime[k].writeNextLong(time);
+
+						for (int k = 0; k < batchValues.length; k++) {
+							batchValuesTime[k].unlockToWrite();
+							batchValues[k].unlockToWrite();
+						}
+
+						if (streamRefreshCallback != null) {
+
+							List<MetricRefreshValue> refreshValue = new ArrayList<MetricRefreshValue>();
+							len = 0;
+							for (int i = 0; i < time.length; i++) {
+
+								for (int j = 0; j < dimensions.length; j++)
+									for (int k = 0; k < dimensions[j]; k++) {
+										if (!Double.isNaN(data[len]) && batchMetricKeys != null)
+											refreshValue.add(new MetricRefreshValue(batchMetricKeys.get(j), k, data[len], time[i]));
+										len++;
+									}
+
+							}
+							
+							if(refreshValue.size()>0)
+								streamRefreshCallback.onDataRefresh(refreshValue);
+						}
+
+						if (streamRefreshCallbackPureData != null && time.length>0)
+							streamRefreshCallbackPureData.onDataRefresh(data, time);
+
+						// {
+						// System.out.println("=====new  data block========="+(new
+						// Timestamp(System.currentTimeMillis()))+"=======================================");
+						//
+						// //System.out.println("data size=" + data.length +
+						// "\t" + data[0] + "\t" + data[data.length - 1]);
+						// System.out.println("time size=" + time.length + "\t"
+						// + (new Timestamp(time[0])) + "\t" + (new
+						// Timestamp(time[time.length - 1])));
+						//
+						// //System.out.println("=============================");
+						// }
+
+						if (response.getMsgType().contains("STOP")) {
+							stopReason = "terminated by server";
+							break;
+						}
+					} else {
+						stopReason = response.getMsgBody();
+						break;
+
+					}
+
+				} catch (IOException e) {
+					stopReason = "Error - " + e.getMessage();
+					break;
+				} catch (Exception e) {
+					e.printStackTrace();
+					stopReason = "Error - " + e.getMessage();
+					break;
+				}
+			}
+
+			Console.writeln("Stop stream data: " + stopReason);
+			isStreamEnabled.set(false);
+			isStreamRuning.set(false);
+
+		}
+
+	}
+
 	private class InboundMessageWorker implements Runnable {
 		public void run() {
 			try {
-				logger.debug("Started inbound message logger thread");
+				// Started inbound message logger thread
 				while (true) {
 
 					Message msg = in.readMessage();
+
 					if (msg == null) {
-						logger.debug("End of input stream. Exiting from inbound message worker thread");
+						// End of input stream. Exiting from inbound message
+						// worker thread
 						break;
 					}
 
@@ -1333,27 +1477,18 @@ public class ClientConnection  {
 					case REJECT:
 						clientMessageQueue.offer(new ClientMessage(msg, true, false));
 						break;
-					case GET_REMAINING_TRAFFIC_RESPONSE:
-						clientMessageQueue.offer(new ClientMessage(msg));
-						break;
-					case NON_PARAM_METRIC_RESPONSE:
-						clientMessageQueue.offer(new ClientMessage(msg));
-						break;
-					case PORTFOLIO_ESTIMATION_RESPONSE:
-						clientMessageQueue.offer(new ClientMessage(msg));
-						break;
 					default:
 						clientMessageQueue.offer(new ClientMessage(msg));
 						break;
 					}
 
 					if (isMessageLoggingEnabled)
-						logger.info("Recieved message: " + msg.toString());
+						System.out.println("Recieved message: " + msg.toString());
 				}
 			} catch (FastException e) {
 				isLoggedOn = false;
 				isConnected = false;
-				logger.info("Connection was terminated");
+				// Connection was terminated
 			}
 		}
 	}
@@ -1369,6 +1504,7 @@ public class ClientConnection  {
 
 					if (serviceMessage == null) {
 						clientMessageQueue.offer(new ClientMessage(null, false, true));
+
 					} else if (serviceMessage.isTerminated()) {
 						break;
 					} else {
@@ -1383,7 +1519,6 @@ public class ClientConnection  {
 
 	}
 
-
 	public String getApiKey() {
 		return apiKey;
 	}
@@ -1391,7 +1526,6 @@ public class ClientConnection  {
 	public void setApiKey(String apiKey) {
 		this.apiKey = apiKey;
 	}
-
 
 	public String getUsername() {
 		return username;
@@ -1445,7 +1579,6 @@ public class ClientConnection  {
 		return isConnected;
 	}
 
-
 	public int nextOutboundMsgSequenceNumber() {
 		return outboundMsgSeqNum++;
 	}
@@ -1465,19 +1598,37 @@ public class ClientConnection  {
 	public String getStatus() {
 		return callStatus.toString();
 	}
-	
-	
+
 	@Override
 	protected void finalize() throws Throwable {
-		
+
 		this.stop();
 
 		super.finalize();
 	}
 
-		
-		
-	
+	public void setStreamRefreshCallback(MetricUpdateCallback streamRefreshCallback) {
+		this.streamRefreshCallback = streamRefreshCallback;
+	}
 
+	public SimpleMetricUpdateCallback getStreamRefreshCallbackPureData() {
+		return streamRefreshCallbackPureData;
+	}
+
+	public void setStreamRefreshCallbackPureData(SimpleMetricUpdateCallback streamRefreshCallbackPureData) {
+		this.streamRefreshCallbackPureData = streamRefreshCallbackPureData;
+	}
+	
+	public AtomicBoolean isStreamEnabled() {
+		return isStreamEnabled;
+	}
+
+	public int getRestarTimeWait() {
+		return restarTimeWait;
+	}
+
+	public void setRestarTimeWait(int restarTimeWait) {
+		this.restarTimeWait = restarTimeWait;
+	}
 
 }

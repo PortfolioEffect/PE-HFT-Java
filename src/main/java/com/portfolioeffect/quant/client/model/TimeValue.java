@@ -22,10 +22,20 @@
  */
 package com.portfolioeffect.quant.client.model;
 
+import com.portfolioeffect.quant.client.result.Metric;
+
 public class TimeValue {
 	
 	private final double[] value;
 	private final long[] time;
+	
+	public TimeValue(Metric result) throws ComputeErrorException{
+		this(result.getDoubleArray("value"), result.getLongArray("time"));
+	}
+	
+	public TimeValue(Metric result, Metric resultT) throws ComputeErrorException{
+		this(result.getDoubleArray("value"), resultT.getDoubleAsLongArray("value"));
+	}
 	
 	public TimeValue(double[] value, long[] time){
 		this.value = value;

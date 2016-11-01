@@ -386,7 +386,18 @@
 	   			
 	</template>
 	
+	<!-- TestUpdate message -->
+	<template name="TestUpdate" id="33" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="MessageType" id="35"><constant value="U29"/></string>
+		<decimal name="Price" id="777040"> <delta/></decimal>
+		<int64 name="Time" id="777041"> <delta/></int64>
+		<int64 name="TotalCount" id="777042"></int64>
+	</template>
 	
+	<!-- TestEcho message -->
+	<template name="TestEcho" id="34" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="MessageType" id="35"><constant value="U30"/></string>
+	</template>
 	
 	
 
