@@ -50,6 +50,9 @@ public class AllPortfolioMetricsTest {
 		InputStream resourceStream = loader.getResourceAsStream(resourceName);
 		props.load(resourceStream);
 
+		//or set you credentials
+		//To obtain a free non-professional
+		//account, you need to follow a quick sign-up process on our website: www.portfolioeffect.com/registration.
 		userName = props.getProperty("userName");
 		password = props.getProperty("password");
 		APIKey = props.getProperty("apiKey");

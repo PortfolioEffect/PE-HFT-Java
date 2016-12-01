@@ -13,8 +13,7 @@ PortfolioEffect platform employes high frequency microstructure model pipeline, 
 market data to enable classic portfolio analysis at intraday horizons.
 
 ## Building from Source
-
-Stable builds are in the You need to have Maven installed to build the jar from source. 
+To build the jar from source  You need to have [Maven][maven] installed.  
 After that in the folder with pom.xml run:
 
 	mvn package
@@ -36,3 +35,4 @@ Copyright &copy; 2016 PortfolioEffect
 
 [PortfolioEffect Terms]: https://www.portfolioeffect.com/docs/terms
 [doc]: https://github.com/PortfolioEffect/PE-HFT-Java/tree/master/doc/manual.pdf
+[maven]: https://maven.apache.org/
